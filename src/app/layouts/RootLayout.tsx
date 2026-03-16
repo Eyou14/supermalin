@@ -36,12 +36,13 @@ export const AppContext = React.createContext<AppContextType>({} as AppContextTy
 
 export const RootLayout: React.FC = () => {
   const navigate = useNavigate();
+
   const [stripePromise] = useState(() => {
     return fetch(`${API_URL}/config`, {
-      headers: { 'Authorization': `Bearer ${publicAnonKey}` }
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
     })
-      .then(res => res.json())
-      .then(config => {
+      .then((res) => res.json())
+      .then((config) => {
         if (config.stripePublicKey && config.stripePublicKey !== 'pk_test_placeholder') {
           return loadStripe(config.stripePublicKey);
         }
@@ -50,7 +51,24 @@ export const RootLayout: React.FC = () => {
       .catch(() => null);
   });
 
-  const [cart, setCart] = useState<Product[]>([]);
+  const [cart, setCart] = useState<Product[]>(() => {
+    try {
+      const saved = localStorage.getItem('supermalin_cart');
+      if (!saved) return [];
+      const parsed = JSON.parse(saved);
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter(
+        (item) =>
+          item &&
+          typeof item.id === 'string' &&
+          typeof item.name === 'string' &&
+          Number.isFinite(Number(item.price))
+      );
+    } catch {
+      return [];
+    }
+  });
+
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [isAuthOpen, setIsAuthOpen] = useState(false);
@@ -59,63 +77,65 @@ export const RootLayout: React.FC = () => {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [walletBalance, setWalletBalance] = useState<number>(0);
 
+  useEffect(() => {
+    localStorage.setItem('supermalin_cart', JSON.stringify(cart));
+  }, [cart]);
+
+  const resetUserState = () => {
+    setUserProfile(null);
+    setWalletBalance(0);
+    setIsAdmin(false);
+  };
+
   const checkSession = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      if (session?.user?.id) {
         setUser(session.user);
         setIsLoggedIn(true);
+        resetUserState();
         await fetchUserProfile(session.user.id);
-        
-        // Check admin role immediately after getting user
-        if (session.user.email === 'admin@supermalin.fr') {
-          setIsAdmin(true);
-        }
+      } else {
+        setUser(null);
+        setIsLoggedIn(false);
+        resetUserState();
       }
     } catch (error) {
-      console.error("Session check error:", error);
+      console.error('Session check error:', error);
     }
   };
 
   const fetchUserProfile = async (userId: string) => {
     try {
       const response = await fetch(`${API_URL}/profile/${userId}`, {
-        headers: { 'Authorization': `Bearer ${publicAnonKey}` }
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
+
       if (response.ok) {
         const data = await response.json();
         setUserProfile(data);
-        setWalletBalance(data.balance || 0);
-        
-        // Update admin status based on profile role - SEULE SOURCE DE VÉRITÉ
-        console.log('🔐 Profile loaded:', data);
-        if (data.role === 'admin') {
-          console.log('✅ Admin role detected for user:', userId);
-          setIsAdmin(true);
-        } else {
-          console.log('❌ No admin role for user:', userId);
-          setIsAdmin(false);
-        }
+        setWalletBalance(Number(data.balance) || 0);
+        setIsAdmin(data.role === 'admin');
       } else {
-        // If profile doesn't exist, create a default one
-        console.log('⚠️ Profile not found, creating default profile for user:', userId);
-        const defaultProfile = { 
-          userId, 
-          balance: 0, 
+        const defaultProfile = {
+          userId,
+          balance: 0,
           role: 'user',
-          createdAt: new Date().toISOString()
+          createdAt: new Date().toISOString(),
         };
-        
-        // Try to create the profile
+
         const createResponse = await fetch(`${API_URL}/profile/${userId}`, {
           method: 'PUT',
-          headers: { 
+          headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}` 
+            Authorization: `Bearer ${publicAnonKey}`,
           },
-          body: JSON.stringify(defaultProfile)
+          body: JSON.stringify(defaultProfile),
         });
-        
+
         if (createResponse.ok) {
           const createdProfile = await createResponse.json();
           setUserProfile(createdProfile);
@@ -124,74 +144,88 @@ export const RootLayout: React.FC = () => {
         }
       }
     } catch (error) {
-      console.error("Error fetching profile:", error);
-      // Even if fetch fails, check if user is admin by email as fallback
-      const session = await supabase.auth.getSession();
-      if (session?.data?.session?.user?.email === 'admin@supermalin.fr') {
-        console.log('⚠️ Profile fetch failed but user is admin by email, setting isAdmin = true');
-        setIsAdmin(true);
-        setUserProfile({ userId, role: 'admin', balance: 0 });
-      } else {
-        setIsAdmin(false);
-      }
+      console.error('Error fetching profile:', error);
+      setIsAdmin(false);
     }
   };
 
   const updateUserProfile = async (updates: any) => {
     if (!user) return;
+
     try {
+      const safeUpdates = {
+        firstName: updates.firstName ?? userProfile?.firstName ?? '',
+        lastName: updates.lastName ?? userProfile?.lastName ?? '',
+        name:
+          updates.name ??
+          [updates.firstName ?? userProfile?.firstName ?? '', updates.lastName ?? userProfile?.lastName ?? '']
+            .filter(Boolean)
+            .join(' ')
+            .trim(),
+        email: userProfile?.email || user?.email || '',
+        phone: updates.phone ?? userProfile?.phone ?? '',
+        street: updates.street ?? userProfile?.street ?? '',
+        zipCode: updates.zipCode ?? userProfile?.zipCode ?? '',
+        city: updates.city ?? userProfile?.city ?? '',
+        country: updates.country ?? userProfile?.country ?? 'France',
+        avatar: updates.avatar ?? userProfile?.avatar,
+        addresses: updates.addresses ?? userProfile?.addresses,
+      };
+
       const response = await fetch(`${API_URL}/profile/${user.id}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}` 
+          Authorization: `Bearer ${publicAnonKey}`,
         },
-        body: JSON.stringify(updates)
+        body: JSON.stringify(safeUpdates),
       });
+
       if (response.ok) {
         const data = await response.json();
         setUserProfile(data);
-        setWalletBalance(data.balance || 0);
+        setWalletBalance(Number(data.balance) || 0);
+        setIsAdmin(data.role === 'admin');
       }
     } catch (error) {
-      console.error("Error updating profile:", error);
+      console.error('Error updating profile:', error);
     }
   };
 
   useEffect(() => {
     checkSession();
-    
-    // Écouter les changements d'auth
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (event, session) => {
+
+    const {
+      data: authListener,
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log('🔄 Auth state changed:', event, session?.user?.email);
-      
-      if (event === 'SIGNED_IN' && session?.user) {
+
+      if (event === 'SIGNED_IN' && session?.user?.id) {
         setUser(session.user);
         setIsLoggedIn(true);
+        resetUserState();
         await fetchUserProfile(session.user.id);
       } else if (event === 'SIGNED_OUT') {
         setUser(null);
         setIsLoggedIn(false);
-        setIsAdmin(false);
-        setUserProfile(null);
-        setWalletBalance(0);
-      } else if (event === 'TOKEN_REFRESHED' && session?.user) {
-        // Re-fetch le profil quand le token est rafraîchi
+        resetUserState();
+      } else if (event === 'TOKEN_REFRESHED' && session?.user?.id) {
         await fetchUserProfile(session.user.id);
       }
     });
-    
+
     return () => {
       authListener?.subscription.unsubscribe();
     };
   }, []);
 
   const addToCart = (product: Product) => {
-    setCart(prev => [...prev, product]);
+    if (!product?.id || !product?.name || !Number.isFinite(Number(product.price))) return;
+    setCart((prev) => [...prev, product]);
   };
 
   const removeFromCart = (index: number) => {
-    setCart(prev => prev.filter((_, i) => i !== index));
+    setCart((prev) => prev.filter((_, i) => i !== index));
   };
 
   const clearCart = () => {
@@ -199,29 +233,29 @@ export const RootLayout: React.FC = () => {
   };
 
   const toggleWishlist = (productId: string) => {
-    setWishlist(prev => {
+    setWishlist((prev) => {
       if (prev.includes(productId)) {
-        return prev.filter(id => id !== productId);
-      } else {
-        return [...prev, productId];
+        return prev.filter((id) => id !== productId);
       }
+      return [...prev, productId];
     });
   };
 
   const handleNavigate = (page: string) => {
     const routes: Record<string, string> = {
-      'home': '/',
-      'shop': '/boutique',
-      'cart': '/panier',
-      'checkout': '/checkout',
-      'profile': '/profil',
-      'admin': '/admin',
-      'cgv': '/cgv',
-      'mentions': '/mentions-legales',
-      'privacy': '/politique-confidentialite',
-      'returns': '/politique-retours',
-      'contact': '/contact',
+      home: '/',
+      shop: '/boutique',
+      cart: '/panier',
+      checkout: '/checkout',
+      profile: '/profil',
+      admin: '/admin',
+      cgv: '/cgv',
+      mentions: '/mentions-legales',
+      privacy: '/politique-confidentialite',
+      returns: '/politique-retours',
+      contact: '/contact',
     };
+
     navigate(routes[page] || '/');
   };
 
@@ -247,9 +281,9 @@ export const RootLayout: React.FC = () => {
       <AppContext.Provider value={contextValue}>
         <div className="min-h-screen bg-white flex flex-col font-sans">
           <Toaster position="top-center" richColors />
-          
-          <Header 
-            cartCount={cart.length} 
+
+          <Header
+            cartCount={cart.length}
             onNavigate={handleNavigate}
             onAuthOpen={() => setIsAuthOpen(true)}
             isLoggedIn={isLoggedIn}
@@ -257,7 +291,7 @@ export const RootLayout: React.FC = () => {
             user={user}
             profile={userProfile}
           />
-          
+
           <DevBanner />
 
           <main className="flex-1">
@@ -266,17 +300,25 @@ export const RootLayout: React.FC = () => {
 
           <Footer onNavigate={handleNavigate} />
           <ChatWidget />
-          
-          <AuthModal 
-            isOpen={isAuthOpen} 
+
+          <AuthModal
+            isOpen={isAuthOpen}
             onClose={() => setIsAuthOpen(false)}
-            onSuccess={(user) => {
-              setUser(user);
+            onSuccess={(session) => {
+              const authUser = session?.user;
+              if (!authUser?.id) {
+                console.error('AuthModal onSuccess: session.user manquant', session);
+                return;
+              }
+
+              setUser(authUser);
               setIsLoggedIn(true);
-              fetchUserProfile(user.id);
+              resetUserState();
+              fetchUserProfile(authUser.id);
               setIsAuthOpen(false);
             }}
           />
+
           <DevTools />
         </div>
       </AppContext.Provider>
