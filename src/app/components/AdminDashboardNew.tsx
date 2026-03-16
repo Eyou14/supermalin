@@ -1,9 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  LayoutDashboard, Package, ShoppingBag, Users, TrendingUp, Download, 
-  Plus, Edit3, Trash2, Search, Filter, Eye, CheckCircle, X, DollarSign,
-  Package2, AlertTriangle, Calendar, FileText, RefreshCcw, Sparkles,
-  Zap
+import {
+  LayoutDashboard,
+  Package,
+  ShoppingBag,
+  TrendingUp,
+  Download,
+  Plus,
+  Edit3,
+  Trash2,
+  Search,
+  Eye,
+  CheckCircle,
+  X,
+  Package2,
+  AlertTriangle,
+  Calendar,
+  RefreshCcw,
+  Sparkles,
+  Zap,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -17,15 +31,21 @@ type TabType = 'dashboard' | 'products' | 'orders' | 'stock' | 'sections';
 
 export const AdminDashboardNew: React.FC = () => {
   const navigate = useNavigate();
+
   const [activeTab, setActiveTab] = useState<TabType>('dashboard');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-  
-  // Section management states
+
+  const [productSearch, setProductSearch] = useState('');
+  const [productCategoryFilter, setProductCategoryFilter] = useState('all');
+  const [currentProductPage, setCurrentProductPage] = useState(1);
+  const PRODUCTS_PER_PAGE = 10;
+
   const [sectionConfig, setSectionConfig] = useState({
     newLotsTitle: 'Nouveaux Lots',
     newLotsDescription: 'Découvrez nos derniers arrivages',
@@ -35,11 +55,10 @@ export const AdminDashboardNew: React.FC = () => {
     badges: {
       nouveau: true,
       arrivage: true,
-      stockLimite: false
+      stockLimite: false,
     },
-    // Bannière page d'accueil
     bannerMessage1: 'Derniers arrivages : +250 produits cette semaine',
-    bannerMessage2: '120 MacBook Pro M3'
+    bannerMessage2: '120 MacBook Pro M3',
   });
 
   useEffect(() => {
@@ -50,10 +69,14 @@ export const AdminDashboardNew: React.FC = () => {
     loadSectionConfig();
   }, []);
 
+  useEffect(() => {
+    setCurrentProductPage(1);
+  }, [productSearch, productCategoryFilter]);
+
   const loadSectionConfig = async () => {
     try {
       const response = await fetch(`${API_URL}/sections`, {
-        headers: { 'Authorization': `Bearer ${publicAnonKey}` }
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
       if (response.ok) {
         const config = await response.json();
@@ -69,20 +92,21 @@ export const AdminDashboardNew: React.FC = () => {
     try {
       if (activeTab === 'products' || activeTab === 'stock' || activeTab === 'dashboard') {
         const response = await fetch(`${API_URL}/products`, {
-          headers: { 'Authorization': `Bearer ${publicAnonKey}` }
+          headers: { Authorization: `Bearer ${publicAnonKey}` },
         });
         if (response.ok) {
           const data = await response.json();
-          setProducts(data);
+          setProducts(Array.isArray(data) ? data : []);
         }
       }
+
       if (activeTab === 'orders' || activeTab === 'dashboard') {
         const response = await fetch(`${API_URL}/orders`, {
-          headers: { 'Authorization': `Bearer ${publicAnonKey}` }
+          headers: { Authorization: `Bearer ${publicAnonKey}` },
         });
         if (response.ok) {
           const data = await response.json();
-          setOrders(data);
+          setOrders(Array.isArray(data) ? data : []);
         }
       }
     } catch (error) {
@@ -96,37 +120,41 @@ export const AdminDashboardNew: React.FC = () => {
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+
     const productData = {
       name: formData.get('name') as string,
       price: parseFloat(formData.get('price') as string),
       category: formData.get('category') as string,
-      condition: formData.get('condition') as string,
-      stock: parseInt(formData.get('stock') as string),
-      image: formData.get('image') as string || 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600',
+      condition: formData.get('condition') as Product['condition'],
+      stock: parseInt(formData.get('stock') as string, 10),
+      image:
+        (formData.get('image') as string) ||
+        'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=600',
       description: formData.get('description') as string,
       type: 'direct' as const,
-      tested: true
+      tested: true,
     };
 
     try {
       const response = await fetch(`${API_URL}/products`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}` 
+          Authorization: `Bearer ${publicAnonKey}`,
         },
-        body: JSON.stringify(productData)
+        body: JSON.stringify(productData),
       });
+
       if (response.ok) {
         toast.success('Produit ajouté avec succès');
         setIsAddProductModalOpen(false);
         fetchData();
       } else {
-        toast.error('Erreur lors de l\'ajout du produit');
+        toast.error("Erreur lors de l'ajout du produit");
       }
     } catch (error) {
       console.error('Error adding product:', error);
-      toast.error('Erreur lors de l\'ajout du produit');
+      toast.error("Erreur lors de l'ajout du produit");
     }
   };
 
@@ -134,76 +162,86 @@ export const AdminDashboardNew: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/products/${product.id}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}` 
+          Authorization: `Bearer ${publicAnonKey}`,
         },
-        body: JSON.stringify(product)
+        body: JSON.stringify(product),
       });
+
       if (response.ok) {
         toast.success('Produit mis à jour');
         setEditingProduct(null);
         fetchData();
+      } else {
+        toast.error('Erreur de mise à jour');
       }
     } catch (error) {
+      console.error('Error updating product:', error);
       toast.error('Erreur de mise à jour');
     }
   };
 
-  const handleDeleteProduct = async (productId: string) => {
-    if (!confirm('Êtes-vous sûr de vouloir supprimer ce produit ?')) return;
-    
+  const handleArchiveProduct = async (productId: string) => {
+    if (!confirm('Archiver ce produit ?')) return;
+
     try {
       const response = await fetch(`${API_URL}/products/${productId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${publicAnonKey}` }
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
       });
+
       if (response.ok) {
-        toast.success('Produit supprimé');
+        toast.success('Produit archivé');
         fetchData();
+      } else {
+        const error = await response.json();
+        toast.error(error.error || 'Erreur d’archivage');
       }
     } catch (error) {
-      toast.error('Erreur de suppression');
+      console.error('Error archiving product:', error);
+      toast.error('Erreur d’archivage');
     }
   };
 
   const handleUpdateOrderStatus = async (orderId: string, newStatus: string) => {
     try {
-      const order = orders.find(o => o.id === orderId);
+      const order = orders.find((o) => o.id === orderId);
       if (!order) return;
-      
+
       const response = await fetch(`${API_URL}/orders/${orderId}`, {
         method: 'PUT',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}` 
+          Authorization: `Bearer ${publicAnonKey}`,
         },
-        body: JSON.stringify({ ...order, status: newStatus })
+        body: JSON.stringify({ ...order, status: newStatus }),
       });
+
       if (response.ok) {
         toast.success(`Commande ${orderId} mise à jour`);
         fetchData();
+      } else {
+        toast.error('Erreur de mise à jour');
       }
     } catch (error) {
+      console.error('Error updating order:', error);
       toast.error('Erreur de mise à jour');
     }
   };
 
   const exportOrdersToCSV = () => {
     const headers = ['N° Commande', 'Date', 'Client', 'Total', 'Statut', 'Livraison'];
-    const rows = orders.map(order => [
+    const rows = orders.map((order) => [
       order.id,
       new Date(order.createdAt).toLocaleDateString('fr-FR'),
       order.shippingInfo?.name || 'N/A',
       `${order.total}€`,
       order.status,
-      order.shippingMethod || 'N/A'
+      order.shippingMethod || 'N/A',
     ]);
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
+    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
@@ -217,12 +255,13 @@ export const AdminDashboardNew: React.FC = () => {
     try {
       const response = await fetch(`${API_URL}/sections`, {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${publicAnonKey}` 
+          Authorization: `Bearer ${publicAnonKey}`,
         },
-        body: JSON.stringify(sectionConfig)
+        body: JSON.stringify(sectionConfig),
       });
+
       if (response.ok) {
         toast.success('Configurations des sections sauvegardées');
       } else {
@@ -234,17 +273,52 @@ export const AdminDashboardNew: React.FC = () => {
     }
   };
 
-  // Dashboard Stats
   const stats = {
-    totalRevenue: orders.reduce((sum, order) => sum + (order.total || 0), 0),
+    totalRevenue: orders.reduce((sum, order) => sum + (Number(order.total) || 0), 0),
     totalOrders: orders.length,
     totalProducts: products.length,
-    lowStockProducts: products.filter(p => (p.stock || 0) < 5).length,
+    lowStockProducts: products.filter((p) => (p.stock || 0) < 5).length,
   };
 
   const monthlyRevenue = orders
-    .filter(o => new Date(o.createdAt).getMonth() === new Date().getMonth())
-    .reduce((sum, order) => sum + (order.total || 0), 0);
+    .filter((o) => new Date(o.createdAt).getMonth() === new Date().getMonth())
+    .reduce((sum, order) => sum + (Number(order.total) || 0), 0);
+
+  const productCategories = [
+    'all',
+    ...Array.from(new Set(products.map((p) => p.category).filter(Boolean))),
+  ];
+
+  const filteredProducts = products.filter((product) => {
+    const matchesSearch =
+      product.name?.toLowerCase().includes(productSearch.toLowerCase()) ||
+      (product.description || '').toLowerCase().includes(productSearch.toLowerCase());
+
+    const matchesCategory =
+      productCategoryFilter === 'all' || product.category === productCategoryFilter;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  const totalProductPages = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE)
+  );
+
+  const paginatedProducts = filteredProducts.slice(
+    (currentProductPage - 1) * PRODUCTS_PER_PAGE,
+    currentProductPage * PRODUCTS_PER_PAGE
+  );
+
+  if (isLoading && activeTab === 'dashboard') {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-center py-20">
+          <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -253,8 +327,7 @@ export const AdminDashboardNew: React.FC = () => {
         <p className="text-gray-600">Gestion complète de la plateforme</p>
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 mb-8 border-b border-gray-200">
+      <div className="flex items-center gap-2 mb-8 border-b border-gray-200 overflow-x-auto">
         {[
           { id: 'dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
           { id: 'products', label: 'Produits', icon: Package },
@@ -265,7 +338,7 @@ export const AdminDashboardNew: React.FC = () => {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as TabType)}
-            className={`flex items-center gap-2 px-4 py-3 font-bold transition-all border-b-2 ${
+            className={`flex items-center gap-2 px-4 py-3 font-bold transition-all border-b-2 whitespace-nowrap ${
               activeTab === tab.id
                 ? 'border-orange-600 text-orange-600'
                 : 'border-transparent text-gray-500 hover:text-gray-900'
@@ -277,7 +350,6 @@ export const AdminDashboardNew: React.FC = () => {
         ))}
       </div>
 
-      {/* Dashboard Tab */}
       {activeTab === 'dashboard' && (
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -286,7 +358,7 @@ export const AdminDashboardNew: React.FC = () => {
                 <TrendingUp size={20} className="opacity-80" />
               </div>
               <h3 className="text-sm opacity-90 mb-1">CA Total</h3>
-              <p className="text-3xl font-black">{(stats.totalRevenue || 0).toFixed(2)}€</p>
+              <p className="text-3xl font-black">{stats.totalRevenue.toFixed(2)}€</p>
             </div>
 
             <div className="bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-2xl p-6">
@@ -295,7 +367,7 @@ export const AdminDashboardNew: React.FC = () => {
                 <TrendingUp size={20} className="opacity-80" />
               </div>
               <h3 className="text-sm opacity-90 mb-1">CA ce mois</h3>
-              <p className="text-3xl font-black">{(monthlyRevenue || 0).toFixed(2)}€</p>
+              <p className="text-3xl font-black">{monthlyRevenue.toFixed(2)}€</p>
             </div>
 
             <div className="bg-gradient-to-br from-green-500 to-green-600 text-white rounded-2xl p-6">
@@ -309,29 +381,37 @@ export const AdminDashboardNew: React.FC = () => {
             <div className="bg-gradient-to-br from-purple-500 to-purple-600 text-white rounded-2xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <Package size={32} />
-                {stats.lowStockProducts > 0 && <AlertTriangle size={20} className="opacity-80" />}
+                {stats.lowStockProducts > 0 && (
+                  <AlertTriangle size={20} className="opacity-80" />
+                )}
               </div>
               <h3 className="text-sm opacity-90 mb-1">Produits</h3>
               <p className="text-3xl font-black">{stats.totalProducts}</p>
               {stats.lowStockProducts > 0 && (
-                <p className="text-xs mt-2 opacity-90">{stats.lowStockProducts} en stock faible</p>
+                <p className="text-xs mt-2 opacity-90">
+                  {stats.lowStockProducts} en stock faible
+                </p>
               )}
             </div>
           </div>
 
-          {/* Recent Orders */}
           <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
             <h2 className="text-xl font-black mb-4">Commandes Récentes</h2>
             <div className="space-y-3">
               {orders.slice(0, 5).map((order) => (
-                <div key={order.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                <div
+                  key={order.id}
+                  className="flex items-center justify-between p-4 bg-gray-50 rounded-xl"
+                >
                   <div>
                     <p className="font-bold">{order.id}</p>
                     <p className="text-sm text-gray-600">{order.shippingInfo?.name || 'N/A'}</p>
                   </div>
                   <div className="text-right">
                     <p className="font-black text-orange-600">{order.total}€</p>
-                    <p className="text-xs text-gray-500">{new Date(order.createdAt).toLocaleDateString('fr-FR')}</p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(order.createdAt).toLocaleDateString('fr-FR')}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -340,20 +420,14 @@ export const AdminDashboardNew: React.FC = () => {
         </div>
       )}
 
-      {/* Products Tab */}
       {activeTab === 'products' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-              <input
-                type="text"
-                placeholder="Rechercher un produit..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
-              />
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 className="text-2xl font-black text-gray-900">Catalogue</h2>
+              <p className="text-sm text-gray-500">{filteredProducts.length} produit(s)</p>
             </div>
+
             <button
               onClick={() => setIsAddProductModalOpen(true)}
               className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all"
@@ -363,74 +437,149 @@ export const AdminDashboardNew: React.FC = () => {
             </button>
           </div>
 
+          <div className="bg-white border border-gray-200 rounded-2xl p-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <input
+                type="text"
+                placeholder="Rechercher un produit..."
+                value={productSearch}
+                onChange={(e) => setProductSearch(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm"
+              />
+
+              <select
+                value={productCategoryFilter}
+                onChange={(e) => setProductCategoryFilter(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm"
+              >
+                {productCategories.map((category) => (
+                  <option key={category} value={category}>
+                    {category === 'all' ? 'Toutes les catégories' : category}
+                  </option>
+                ))}
+              </select>
+
+              <div className="flex items-center text-sm text-gray-500">
+                Page {currentProductPage} / {totalProductPages}
+              </div>
+            </div>
+          </div>
+
           <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b-2 border-gray-200">
-                <tr>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Produit</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Catégorie</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Prix</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Stock</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products
-                  .filter(p => p?.name?.toLowerCase().includes(searchTerm.toLowerCase()))
-                  .map((product) => (
-                    <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <img src={product.image} alt={product.name} className="w-12 h-12 rounded-lg object-cover" />
-                          <div>
-                            <p className="font-bold">{product.name}</p>
-                            <p className="text-xs text-gray-500">{product.condition}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm">{product.category}</td>
-                      <td className="px-6 py-4 font-bold text-orange-600">{product.price}€</td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${
-                          (product.stock || 0) === 0 ? 'bg-red-100 text-red-700' :
-                          (product.stock || 0) < 5 ? 'bg-orange-100 text-orange-700' :
-                          'bg-green-100 text-green-700'
-                        }`}>
-                          {product.stock || 0}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => navigate(`/boutique/${product.id}`)}
-                            className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                            title="Voir sur le site"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button
-                            onClick={() => setEditingProduct(product)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteProduct(product.id)}
-                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                  <tr>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Produit</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Catégorie</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Prix</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Stock</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {paginatedProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-10 text-center text-gray-500">
+                        Aucun produit trouvé
                       </td>
                     </tr>
-                  ))}
-              </tbody>
-            </table>
+                  ) : (
+                    paginatedProducts.map((product) => (
+                      <tr key={product.id} className="border-b border-gray-100 hover:bg-gray-50">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-12 h-12 rounded-lg object-cover border border-gray-200"
+                            />
+                            <div>
+                              <p className="font-bold">{product.name}</p>
+                              <p className="text-xs text-gray-500">
+                                {product.description || product.condition || 'Sans description'}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+
+                        <td className="px-6 py-4 text-sm">{product.category || '-'}</td>
+
+                        <td className="px-6 py-4 font-bold text-orange-600">
+                          {Number(product.price || 0).toFixed(2)}€
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <span
+                            className={`px-3 py-1 rounded-full text-xs font-bold ${
+                              (product.stock || 0) === 0
+                                ? 'bg-red-100 text-red-700'
+                                : (product.stock || 0) < 5
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}
+                          >
+                            {product.stock || 0}
+                          </span>
+                        </td>
+
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => navigate(`/boutique/${product.id}`)}
+                              className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Voir sur le site"
+                            >
+                              <Eye size={16} />
+                            </button>
+
+                            <button
+                              onClick={() => setEditingProduct(product)}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Modifier"
+                            >
+                              <Edit3 size={16} />
+                            </button>
+
+                            <button
+                              onClick={() => handleArchiveProduct(product.id)}
+                              className="p-2 text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+                              title="Archiver"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={() => setCurrentProductPage((p) => Math.max(1, p - 1))}
+              disabled={currentProductPage === 1}
+              className="px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-50"
+            >
+              Précédent
+            </button>
+
+            <button
+              onClick={() =>
+                setCurrentProductPage((p) => Math.min(totalProductPages, p + 1))
+              }
+              disabled={currentProductPage === totalProductPages}
+              className="px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-50"
+            >
+              Suivant
+            </button>
           </div>
         </div>
       )}
 
-      {/* Orders Tab */}
       {activeTab === 'orders' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -445,118 +594,137 @@ export const AdminDashboardNew: React.FC = () => {
           </div>
 
           <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b-2 border-gray-200">
-                <tr>
-                  <th className="text-left px-6 py-4 font-bold text-sm">N° Commande</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Client</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Date</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Total</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Livraison</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Statut</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {orders.map((order) => (
-                  <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                    <td className="px-6 py-4 font-mono text-sm font-bold">{order.id}</td>
-                    <td className="px-6 py-4">
-                      <div>
-                        <p className="font-medium">{order.shippingInfo?.name || 'N/A'}</p>
-                        <p className="text-xs text-gray-500">{order.shippingInfo?.email || 'N/A'}</p>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm">{new Date(order.createdAt).toLocaleDateString('fr-FR')}</td>
-                    <td className="px-6 py-4 font-bold text-orange-600">{order.total}€</td>
-                    <td className="px-6 py-4 text-sm">{order.shippingMethod || 'N/A'}</td>
-                    <td className="px-6 py-4">
-                      <select
-                        value={order.status}
-                        onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                        className="px-3 py-1 rounded-lg text-xs font-bold border-2 border-gray-200 focus:outline-none focus:border-orange-600"
-                      >
-                        <option value="pending">En attente</option>
-                        <option value="paid">Payé</option>
-                        <option value="shipped">Expédié</option>
-                        <option value="delivered">Livré</option>
-                        <option value="cancelled">Annulé</option>
-                      </select>
-                    </td>
-                    <td className="px-6 py-4">
-                      <button
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                        title="Voir détails"
-                      >
-                        <Eye size={16} />
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                  <tr>
+                    <th className="text-left px-6 py-4 font-bold text-sm">N° Commande</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Client</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Date</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Total</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Livraison</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Statut</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {orders.map((order) => (
+                    <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="px-6 py-4 font-mono text-sm font-bold">{order.id}</td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <p className="font-medium">{order.shippingInfo?.name || 'N/A'}</p>
+                          <p className="text-xs text-gray-500">
+                            {order.shippingInfo?.email || 'N/A'}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        {new Date(order.createdAt).toLocaleDateString('fr-FR')}
+                      </td>
+                      <td className="px-6 py-4 font-bold text-orange-600">{order.total}€</td>
+                      <td className="px-6 py-4 text-sm">{order.shippingMethod || 'N/A'}</td>
+                      <td className="px-6 py-4">
+                        <select
+                          value={order.status}
+                          onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                          className="px-3 py-1 rounded-lg text-xs font-bold border-2 border-gray-200 focus:outline-none focus:border-orange-600"
+                        >
+                          <option value="pending">En attente</option>
+                          <option value="paid">Payé</option>
+                          <option value="shipped">Expédié</option>
+                          <option value="delivered">Livré</option>
+                          <option value="cancelled">Annulé</option>
+                        </select>
+                      </td>
+                      <td className="px-6 py-4">
+                        <button
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Voir détails"
+                        >
+                          <Eye size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Stock Tab */}
       {activeTab === 'stock' && (
         <div className="space-y-6">
           <h2 className="text-2xl font-black">Gestion du Stock</h2>
-          
+
           {stats.lowStockProducts > 0 && (
             <div className="bg-orange-50 border-2 border-orange-200 rounded-2xl p-6 flex items-start gap-4">
               <AlertTriangle className="text-orange-600 flex-shrink-0" size={24} />
               <div>
                 <h3 className="font-bold text-orange-900 mb-1">Alerte Stock Bas</h3>
-                <p className="text-sm text-orange-700">{stats.lowStockProducts} produit(s) ont un stock inférieur à 5 unités</p>
+                <p className="text-sm text-orange-700">
+                  {stats.lowStockProducts} produit(s) ont un stock inférieur à 5 unités
+                </p>
               </div>
             </div>
           )}
 
           <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b-2 border-gray-200">
-                <tr>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Produit</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Catégorie</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Stock Actuel</th>
-                  <th className="text-left px-6 py-4 font-bold text-sm">Statut</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products
-                  .sort((a, b) => (a.stock || 0) - (b.stock || 0))
-                  .map((product) => (
-                    <tr key={product.id} className="border-b border-gray-100">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
-                          <p className="font-medium">{product.name}</p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm">{product.category}</td>
-                      <td className="px-6 py-4">
-                        <span className="font-black text-lg">{product.stock || 0}</span>
-                      </td>
-                      <td className="px-6 py-4">
-                        {(product.stock || 0) === 0 ? (
-                          <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">Rupture</span>
-                        ) : (product.stock || 0) < 5 ? (
-                          <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">Stock bas</span>
-                        ) : (
-                          <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">Disponible</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="min-w-full">
+                <thead className="bg-gray-50 border-b-2 border-gray-200">
+                  <tr>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Produit</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Catégorie</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Stock Actuel</th>
+                    <th className="text-left px-6 py-4 font-bold text-sm">Statut</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {products
+                    .slice()
+                    .sort((a, b) => (a.stock || 0) - (b.stock || 0))
+                    .map((product) => (
+                      <tr key={product.id} className="border-b border-gray-100">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <img
+                              src={product.image}
+                              alt={product.name}
+                              className="w-10 h-10 rounded-lg object-cover"
+                            />
+                            <p className="font-medium">{product.name}</p>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm">{product.category}</td>
+                        <td className="px-6 py-4">
+                          <span className="font-black text-lg">{product.stock || 0}</span>
+                        </td>
+                        <td className="px-6 py-4">
+                          {(product.stock || 0) === 0 ? (
+                            <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-xs font-bold">
+                              Rupture
+                            </span>
+                          ) : (product.stock || 0) < 5 ? (
+                            <span className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-bold">
+                              Stock bas
+                            </span>
+                          ) : (
+                            <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold">
+                              Disponible
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Sections Tab */}
       {activeTab === 'sections' && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
@@ -569,7 +737,7 @@ export const AdminDashboardNew: React.FC = () => {
               Sauvegarder les modifications
             </button>
           </div>
-          
+
           <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
             <h3 className="text-xl font-black mb-4 flex items-center gap-2">
               <Sparkles className="text-orange-600" size={24} />
@@ -581,9 +749,10 @@ export const AdminDashboardNew: React.FC = () => {
                 <input
                   type="text"
                   value={sectionConfig.newLotsTitle}
-                  onChange={(e) => setSectionConfig({...sectionConfig, newLotsTitle: e.target.value})}
+                  onChange={(e) =>
+                    setSectionConfig({ ...sectionConfig, newLotsTitle: e.target.value })
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600 font-medium"
-                  placeholder="Ex: Nouveaux Lots, Promotions, etc."
                 />
               </div>
               <div>
@@ -591,9 +760,10 @@ export const AdminDashboardNew: React.FC = () => {
                 <input
                   type="text"
                   value={sectionConfig.newLotsDescription}
-                  onChange={(e) => setSectionConfig({...sectionConfig, newLotsDescription: e.target.value})}
+                  onChange={(e) =>
+                    setSectionConfig({ ...sectionConfig, newLotsDescription: e.target.value })
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
-                  placeholder="Ex: Découvrez nos derniers arrivages"
                 />
               </div>
             </div>
@@ -610,9 +780,10 @@ export const AdminDashboardNew: React.FC = () => {
                 <input
                   type="text"
                   value={sectionConfig.newArrivalsTitle}
-                  onChange={(e) => setSectionConfig({...sectionConfig, newArrivalsTitle: e.target.value})}
+                  onChange={(e) =>
+                    setSectionConfig({ ...sectionConfig, newArrivalsTitle: e.target.value })
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600 font-medium"
-                  placeholder="Ex: Derniers Arrivages, Nouveautés, etc."
                 />
               </div>
               <div>
@@ -620,9 +791,13 @@ export const AdminDashboardNew: React.FC = () => {
                 <input
                   type="text"
                   value={sectionConfig.newArrivalsDescription}
-                  onChange={(e) => setSectionConfig({...sectionConfig, newArrivalsDescription: e.target.value})}
+                  onChange={(e) =>
+                    setSectionConfig({
+                      ...sectionConfig,
+                      newArrivalsDescription: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
-                  placeholder="Ex: Produits fraîchement ajoutés au catalogue"
                 />
               </div>
             </div>
@@ -636,11 +811,21 @@ export const AdminDashboardNew: React.FC = () => {
                 <select
                   multiple
                   value={sectionConfig.featuredProductIds}
-                  onChange={(e) => setSectionConfig({...sectionConfig, featuredProductIds: Array.from(e.target.selectedOptions, option => option.value)})}
+                  onChange={(e) =>
+                    setSectionConfig({
+                      ...sectionConfig,
+                      featuredProductIds: Array.from(
+                        e.target.selectedOptions,
+                        (option) => option.value
+                      ),
+                    })
+                  }
                   className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
                 >
-                  {products.map(product => (
-                    <option key={product.id} value={product.id}>{product.name}</option>
+                  {products.map((product) => (
+                    <option key={product.id} value={product.id}>
+                      {product.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -655,7 +840,12 @@ export const AdminDashboardNew: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={sectionConfig.badges.nouveau}
-                  onChange={(e) => setSectionConfig({...sectionConfig, badges: {...sectionConfig.badges, nouveau: e.target.checked}})}
+                  onChange={(e) =>
+                    setSectionConfig({
+                      ...sectionConfig,
+                      badges: { ...sectionConfig.badges, nouveau: e.target.checked },
+                    })
+                  }
                   className="w-4 h-4"
                 />
               </div>
@@ -664,7 +854,12 @@ export const AdminDashboardNew: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={sectionConfig.badges.arrivage}
-                  onChange={(e) => setSectionConfig({...sectionConfig, badges: {...sectionConfig.badges, arrivage: e.target.checked}})}
+                  onChange={(e) =>
+                    setSectionConfig({
+                      ...sectionConfig,
+                      badges: { ...sectionConfig.badges, arrivage: e.target.checked },
+                    })
+                  }
                   className="w-4 h-4"
                 />
               </div>
@@ -673,7 +868,12 @@ export const AdminDashboardNew: React.FC = () => {
                 <input
                   type="checkbox"
                   checked={sectionConfig.badges.stockLimite}
-                  onChange={(e) => setSectionConfig({...sectionConfig, badges: {...sectionConfig.badges, stockLimite: e.target.checked}})}
+                  onChange={(e) =>
+                    setSectionConfig({
+                      ...sectionConfig,
+                      badges: { ...sectionConfig.badges, stockLimite: e.target.checked },
+                    })
+                  }
                   className="w-4 h-4"
                 />
               </div>
@@ -691,19 +891,23 @@ export const AdminDashboardNew: React.FC = () => {
                 <input
                   type="text"
                   value={sectionConfig.bannerMessage1}
-                  onChange={(e) => setSectionConfig({...sectionConfig, bannerMessage1: e.target.value})}
+                  onChange={(e) =>
+                    setSectionConfig({ ...sectionConfig, bannerMessage1: e.target.value })
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600 font-medium"
-                  placeholder="Ex: Derniers arrivages : +250 produits cette semaine"
                 />
               </div>
               <div>
-                <label className="block text-sm font-bold mb-2">Message 2 (Nouveau lot arrivé)</label>
+                <label className="block text-sm font-bold mb-2">
+                  Message 2 (Nouveau lot arrivé)
+                </label>
                 <input
                   type="text"
                   value={sectionConfig.bannerMessage2}
-                  onChange={(e) => setSectionConfig({...sectionConfig, bannerMessage2: e.target.value})}
+                  onChange={(e) =>
+                    setSectionConfig({ ...sectionConfig, bannerMessage2: e.target.value })
+                  }
                   className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600 font-medium"
-                  placeholder="Ex: 120 MacBook Pro M3"
                 />
               </div>
             </div>
@@ -711,7 +915,6 @@ export const AdminDashboardNew: React.FC = () => {
         </div>
       )}
 
-      {/* Add Product Modal */}
       <AnimatePresence>
         {isAddProductModalOpen && (
           <motion.div
@@ -851,7 +1054,6 @@ export const AdminDashboardNew: React.FC = () => {
         )}
       </AnimatePresence>
 
-      {/* Edit Product Modal */}
       <AnimatePresence>
         {editingProduct && (
           <motion.div
@@ -884,7 +1086,9 @@ export const AdminDashboardNew: React.FC = () => {
                   <input
                     type="text"
                     value={editingProduct.name}
-                    onChange={(e) => setEditingProduct({...editingProduct, name: e.target.value})}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, name: e.target.value })
+                    }
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
                   />
                 </div>
@@ -896,7 +1100,12 @@ export const AdminDashboardNew: React.FC = () => {
                       type="number"
                       step="0.01"
                       value={editingProduct.price}
-                      onChange={(e) => setEditingProduct({...editingProduct, price: parseFloat(e.target.value)})}
+                      onChange={(e) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          price: parseFloat(e.target.value),
+                        })
+                      }
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
                     />
                   </div>
@@ -905,7 +1114,12 @@ export const AdminDashboardNew: React.FC = () => {
                     <input
                       type="number"
                       value={editingProduct.stock || 0}
-                      onChange={(e) => setEditingProduct({...editingProduct, stock: parseInt(e.target.value)})}
+                      onChange={(e) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          stock: parseInt(e.target.value, 10),
+                        })
+                      }
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
                     />
                   </div>
@@ -916,7 +1130,9 @@ export const AdminDashboardNew: React.FC = () => {
                     <label className="block text-sm font-bold mb-2">Catégorie</label>
                     <select
                       value={editingProduct.category}
-                      onChange={(e) => setEditingProduct({...editingProduct, category: e.target.value})}
+                      onChange={(e) =>
+                        setEditingProduct({ ...editingProduct, category: e.target.value })
+                      }
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
                     >
                       <option value="telephonie">Téléphonie</option>
@@ -935,7 +1151,12 @@ export const AdminDashboardNew: React.FC = () => {
                     <label className="block text-sm font-bold mb-2">État</label>
                     <select
                       value={editingProduct.condition}
-                      onChange={(e) => setEditingProduct({...editingProduct, condition: e.target.value})}
+                      onChange={(e) =>
+                        setEditingProduct({
+                          ...editingProduct,
+                          condition: e.target.value as Product['condition'],
+                        })
+                      }
                       className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
                     >
                       <option value="Neuf">Neuf</option>
@@ -952,7 +1173,9 @@ export const AdminDashboardNew: React.FC = () => {
                   <input
                     type="url"
                     value={editingProduct.image}
-                    onChange={(e) => setEditingProduct({...editingProduct, image: e.target.value})}
+                    onChange={(e) =>
+                      setEditingProduct({ ...editingProduct, image: e.target.value })
+                    }
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600"
                   />
                 </div>
@@ -961,8 +1184,13 @@ export const AdminDashboardNew: React.FC = () => {
                   <label className="block text-sm font-bold mb-2">Description</label>
                   <textarea
                     rows={3}
-                    value={editingProduct.description || ''}
-                    onChange={(e) => setEditingProduct({...editingProduct, description: e.target.value})}
+                    value={(editingProduct as any).description || ''}
+                    onChange={(e) =>
+                      setEditingProduct({
+                        ...editingProduct,
+                        description: e.target.value,
+                      } as Product)
+                    }
                     className="w-full px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-orange-600 resize-none"
                   />
                 </div>
