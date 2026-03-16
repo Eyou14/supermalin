@@ -37,6 +37,11 @@ export const AdminDashboardNew: React.FC = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+const [orderSearch, setOrderSearch] = useState('');
+const [orderStatusFilter, setOrderStatusFilter] = useState('all');
+const [currentOrderPage, setCurrentOrderPage] = useState(1);
+const ORDERS_PER_PAGE = 10;
+
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddProductModalOpen, setIsAddProductModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -64,6 +69,10 @@ export const AdminDashboardNew: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, [activeTab]);
+
+useEffect(() => {
+  setCurrentOrderPage(1);
+}, [orderSearch, orderStatusFilter]);
 
   useEffect(() => {
     loadSectionConfig();
@@ -182,6 +191,30 @@ export const AdminDashboardNew: React.FC = () => {
     }
   };
 
+
+const filteredOrders = orders.filter((order) => {
+  const search = orderSearch.toLowerCase();
+
+  const matchesSearch =
+    order.id?.toLowerCase().includes(search) ||
+    order.shippingInfo?.name?.toLowerCase().includes(search) ||
+    order.shippingInfo?.email?.toLowerCase().includes(search);
+
+  const matchesStatus =
+    orderStatusFilter === 'all' || order.status === orderStatusFilter;
+
+  return matchesSearch && matchesStatus;
+});
+
+const totalOrderPages = Math.max(1, Math.ceil(filteredOrders.length / ORDERS_PER_PAGE));
+
+const paginatedOrders = filteredOrders.slice(
+  (currentOrderPage - 1) * ORDERS_PER_PAGE,
+  currentOrderPage * ORDERS_PER_PAGE
+);
+
+
+
   const handleArchiveProduct = async (productId: string) => {
     if (!confirm('Archiver ce produit ?')) return;
 
@@ -296,6 +329,8 @@ export const AdminDashboardNew: React.FC = () => {
 
     const matchesCategory =
       productCategoryFilter === 'all' || product.category === productCategoryFilter;
+
+
 
     return matchesSearch && matchesCategory;
   });
@@ -580,79 +615,141 @@ export const AdminDashboardNew: React.FC = () => {
         </div>
       )}
 
-      {activeTab === 'orders' && (
-        <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h2 className="text-2xl font-black">Gestion des Commandes</h2>
-            <button
-              onClick={exportOrdersToCSV}
-              className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 transition-all"
-            >
-              <Download size={20} />
-              Export CSV
-            </button>
-          </div>
+      
 
-          <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full">
-                <thead className="bg-gray-50 border-b-2 border-gray-200">
-                  <tr>
-                    <th className="text-left px-6 py-4 font-bold text-sm">N° Commande</th>
-                    <th className="text-left px-6 py-4 font-bold text-sm">Client</th>
-                    <th className="text-left px-6 py-4 font-bold text-sm">Date</th>
-                    <th className="text-left px-6 py-4 font-bold text-sm">Total</th>
-                    <th className="text-left px-6 py-4 font-bold text-sm">Livraison</th>
-                    <th className="text-left px-6 py-4 font-bold text-sm">Statut</th>
-                    <th className="text-left px-6 py-4 font-bold text-sm">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map((order) => (
-                    <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="px-6 py-4 font-mono text-sm font-bold">{order.id}</td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <p className="font-medium">{order.shippingInfo?.name || 'N/A'}</p>
-                          <p className="text-xs text-gray-500">
-                            {order.shippingInfo?.email || 'N/A'}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm">
-                        {new Date(order.createdAt).toLocaleDateString('fr-FR')}
-                      </td>
-                      <td className="px-6 py-4 font-bold text-orange-600">{order.total}€</td>
-                      <td className="px-6 py-4 text-sm">{order.shippingMethod || 'N/A'}</td>
-                      <td className="px-6 py-4">
-                        <select
-                          value={order.status}
-                          onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
-                          className="px-3 py-1 rounded-lg text-xs font-bold border-2 border-gray-200 focus:outline-none focus:border-orange-600"
-                        >
-                          <option value="pending">En attente</option>
-                          <option value="paid">Payé</option>
-                          <option value="shipped">Expédié</option>
-                          <option value="delivered">Livré</option>
-                          <option value="cancelled">Annulé</option>
-                        </select>
-                      </td>
-                      <td className="px-6 py-4">
-                        <button
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                          title="Voir détails"
-                        >
-                          <Eye size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
+{activeTab === 'orders' && (
+  <div className="space-y-6">
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+        <h2 className="text-2xl font-black">Gestion des Commandes</h2>
+        <p className="text-sm text-gray-500">{filteredOrders.length} commande(s)</p>
+      </div>
+
+      <button
+        onClick={exportOrdersToCSV}
+        className="flex items-center gap-2 bg-green-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-green-700 transition-all"
+      >
+        <Download size={20} />
+        Export CSV
+      </button>
+    </div>
+
+    <div className="bg-white border border-gray-200 rounded-2xl p-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <input
+          type="text"
+          placeholder="Rechercher une commande..."
+          value={orderSearch}
+          onChange={(e) => setOrderSearch(e.target.value)}
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm"
+        />
+
+        <select
+          value={orderStatusFilter}
+          onChange={(e) => setOrderStatusFilter(e.target.value)}
+          className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm"
+        >
+          <option value="all">Tous les statuts</option>
+          <option value="pending">En attente</option>
+          <option value="paid">Payé</option>
+          <option value="shipped">Expédié</option>
+          <option value="delivered">Livré</option>
+          <option value="cancelled">Annulé</option>
+        </select>
+
+        <div className="flex items-center text-sm text-gray-500">
+          Page {currentOrderPage} / {totalOrderPages}
         </div>
-      )}
+      </div>
+    </div>
+
+    <div className="bg-white border-2 border-gray-200 rounded-2xl overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="min-w-full">
+          <thead className="bg-gray-50 border-b-2 border-gray-200">
+            <tr>
+              <th className="text-left px-6 py-4 font-bold text-sm">N° Commande</th>
+              <th className="text-left px-6 py-4 font-bold text-sm">Client</th>
+              <th className="text-left px-6 py-4 font-bold text-sm">Date</th>
+              <th className="text-left px-6 py-4 font-bold text-sm">Total</th>
+              <th className="text-left px-6 py-4 font-bold text-sm">Livraison</th>
+              <th className="text-left px-6 py-4 font-bold text-sm">Statut</th>
+              <th className="text-left px-6 py-4 font-bold text-sm">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {paginatedOrders.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-10 text-center text-gray-500">
+                  Aucune commande trouvée
+                </td>
+              </tr>
+            ) : (
+              paginatedOrders.map((order) => (
+                <tr key={order.id} className="border-b border-gray-100 hover:bg-gray-50">
+                  <td className="px-6 py-4 font-mono text-sm font-bold">{order.id}</td>
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="font-medium">{order.shippingInfo?.name || 'N/A'}</p>
+                      <p className="text-xs text-gray-500">{order.shippingInfo?.email || 'N/A'}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    {new Date(order.createdAt).toLocaleDateString('fr-FR')}
+                  </td>
+                  <td className="px-6 py-4 font-bold text-orange-600">
+                    {Number(order.total || 0).toFixed(2)}€
+                  </td>
+                  <td className="px-6 py-4 text-sm">{order.shippingMethod || 'N/A'}</td>
+                  <td className="px-6 py-4">
+                    <select
+                      value={order.status}
+                      onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
+                      className="px-3 py-1 rounded-lg text-xs font-bold border-2 border-gray-200 focus:outline-none focus:border-orange-600"
+                    >
+                      <option value="pending">En attente</option>
+                      <option value="paid">Payé</option>
+                      <option value="shipped">Expédié</option>
+                      <option value="delivered">Livré</option>
+                      <option value="cancelled">Annulé</option>
+                    </select>
+                  </td>
+                  <td className="px-6 py-4">
+                    <button
+                      className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                      title="Voir détails"
+                    >
+                      <Eye size={16} />
+                    </button>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div className="flex items-center justify-center gap-2">
+      <button
+        onClick={() => setCurrentOrderPage((p) => Math.max(1, p - 1))}
+        disabled={currentOrderPage === 1}
+        className="px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-50"
+      >
+        Précédent
+      </button>
+
+      <button
+        onClick={() => setCurrentOrderPage((p) => Math.min(totalOrderPages, p + 1))}
+        disabled={currentOrderPage === totalOrderPages}
+        className="px-4 py-2 rounded-xl border border-gray-200 disabled:opacity-50"
+      >
+        Suivant
+      </button>
+    </div>
+  </div>
+)}
+
 
       {activeTab === 'stock' && (
         <div className="space-y-6">
