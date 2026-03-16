@@ -7,7 +7,7 @@ import { AppContext } from '../layouts/RootLayout';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { ChevronRight, ShieldCheck, TruckIcon, RefreshCcw, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-import hdfLogo from 'figma:asset/4b0e7c7abc019789ad1fd9e6eb114c00e2d042dd.png';
+const hdfLogo = "/placeholder-hdf.png";
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 

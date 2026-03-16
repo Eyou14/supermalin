@@ -1,7 +1,7 @@
 import { Gavel, Facebook, Twitter, Instagram, Youtube, Mail, Phone, MapPin, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Logo } from "./Logo";
-import hdfLogo from 'figma:asset/4b0e7c7abc019789ad1fd9e6eb114c00e2d042dd.png';
+const hdfLogo = "/placeholder-hdf.png";
 
 export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) => {
   const navigate = useNavigate();
