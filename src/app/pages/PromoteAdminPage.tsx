@@ -3,7 +3,7 @@ import { ShieldCheck, AlertCircle, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
 
 export const PromoteAdminPage: React.FC = () => {
   const [email, setEmail] = useState('admin@supermalin.fr');

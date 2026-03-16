@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { Logo } from "./Logo";
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
 
 export const Header = ({ 
   cartCount, 

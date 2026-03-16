@@ -6,7 +6,7 @@ import { projectId, publicAnonKey } from 'utils/supabase/info';
 import { Product } from './ProductCard';
 import { Logo } from './Logo';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
 
 interface TradeRequest {
   id: string;

@@ -57,7 +57,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
     try {
       if (mode === 'signup') {
-        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7/signup`, {
+        const response = await fetch(`https://${projectId}.supabase.co/functions/v1/server/signup`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

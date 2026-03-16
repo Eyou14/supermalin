@@ -6,7 +6,7 @@ import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();

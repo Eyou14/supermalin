@@ -3,7 +3,7 @@ import { cors } from "npm:hono/cors";
 import { logger } from "npm:hono/logger";
 import { Resend } from "npm:resend";
 import { createClient } from "npm:@supabase/supabase-js";
-import * as kv from "./kv_store.tsx";
+import * as kv from "./kv_store.ts";
 import Stripe from "npm:stripe";
 
 // Initialize the Hono app
@@ -31,6 +31,54 @@ const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 const BUCKET_NAME = 'make-e62e42f7';
+
+const normalizeString = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : null;
+};
+
+const buildSafeProfile = (
+  userId: string,
+  existing: any = {},
+  updates: any = {},
+  fallbackEmail?: string | null
+) => {
+  const firstName = normalizeString(updates.firstName) ?? normalizeString(existing.firstName);
+  const lastName = normalizeString(updates.lastName) ?? normalizeString(existing.lastName);
+
+  const fallbackName = [firstName, lastName].filter(Boolean).join(' ').trim();
+
+  const computedName =
+    normalizeString(updates.name) ??
+    normalizeString(existing.name) ??
+    (fallbackName || null);
+    [firstName, lastName].filter(Boolean).join(' ').trim() ||
+    null;
+
+  return {
+    userId,
+    email: normalizeString(existing.email) ?? normalizeString(updates.email) ?? fallbackEmail ?? null,
+    firstName,
+    lastName,
+    name: computedName,
+    phone: normalizeString(updates.phone) ?? normalizeString(existing.phone),
+    street: normalizeString(updates.street) ?? normalizeString(existing.street),
+    zipCode: normalizeString(updates.zipCode) ?? normalizeString(existing.zipCode),
+    city: normalizeString(updates.city) ?? normalizeString(existing.city),
+    country: normalizeString(updates.country) ?? normalizeString(existing.country) ?? 'France',
+    avatar: updates.avatar ?? existing.avatar ?? null,
+    addresses: Array.isArray(updates.addresses)
+      ? updates.addresses
+      : Array.isArray(existing.addresses)
+      ? existing.addresses
+      : [],
+    balance: Number(existing.balance) || 0,
+    role: normalizeString(existing.role) ?? 'user',
+    createdAt: existing.createdAt ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+};
 
 // Route handlers
 const setupRoutes = (router: Hono) => {
@@ -108,19 +156,53 @@ const setupRoutes = (router: Hono) => {
 
   // Profile
   router.get("/profile/:id", async (c) => {
+  try {
     const id = c.req.param('id');
     const profile = await kv.get(`profile:${id}`);
-    return c.json(profile || { userId: id, balance: 0, role: 'user' });
-  });
+
+    if (profile) {
+      return c.json(profile);
+    }
+
+    return c.json({
+      userId: id,
+      email: null,
+      firstName: null,
+      lastName: null,
+      name: null,
+      phone: null,
+      street: null,
+      zipCode: null,
+      city: null,
+      country: 'France',
+      avatar: null,
+      addresses: [],
+      balance: 0,
+      role: 'user',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+  } catch (e) {
+    console.error("Error fetching profile:", e);
+    return c.json({ error: e.message }, 500);
+  }
+});
 
   router.put("/profile/:id", async (c) => {
+  try {
     const id = c.req.param('id');
     const updates = await c.req.json();
-    const existing = await kv.get(`profile:${id}`) || {};
-    const updated = { ...existing, ...updates, userId: id };
-    await kv.set(`profile:${id}`, updated);
-    return c.json(updated);
-  });
+    const existing = (await kv.get(`profile:${id}`)) || {};
+
+    const safeProfile = buildSafeProfile(id, existing, updates);
+
+    await kv.set(`profile:${id}`, safeProfile);
+    return c.json(safeProfile);
+  } catch (e) {
+    console.error("Error updating profile:", e);
+    return c.json({ error: e.message }, 400);
+  }
+});
 
   // Upload avatar
   router.post("/profile/:userId/avatar", async (c) => {
@@ -481,43 +563,53 @@ const setupRoutes = (router: Hono) => {
   });
 
   // Auth
-  router.post("/signup", async (c) => {
-    try {
-      const { email, password, firstName, lastName, name } = await c.req.json();
-      
-      // Support both old format (name) and new format (firstName + lastName)
-      const fullName = name || `${firstName} ${lastName}`.trim();
-      
-      const { data, error } = await supabase.auth.admin.createUser({
-        email, 
-        password, 
-        user_metadata: { 
-          name: fullName,
-          firstName: firstName || name?.split(' ')[0] || '',
-          lastName: lastName || name?.split(' ').slice(1).join(' ') || ''
-        }, 
-        email_confirm: true
-      });
-      if (error) return c.json({ error: error.message }, 400);
-      
-      const profile = { 
-        userId: data.user.id, 
-        email, 
-        name: fullName,
-        firstName: firstName || name?.split(' ')[0] || '',
-        lastName: lastName || name?.split(' ').slice(1).join(' ') || '',
-        balance: 0, 
-        role: 'user', 
-        createdAt: new Date().toISOString() 
-      };
-      await kv.set(`profile:${data.user.id}`, profile);
-      
-      return c.json({ success: true, user: data.user });
-    } catch (e) {
-      return c.json({ error: e.message }, 500);
-    }
-  });
+router.post("/signup", async (c) => {
+  try {
+    const { email, password, firstName, lastName, name } = await c.req.json();
 
+    const safeFirstName = normalizeString(firstName);
+    const safeLastName = normalizeString(lastName);
+
+    const signupFallbackName = [safeFirstName, safeLastName].filter(Boolean).join(' ').trim();
+
+    const safeName =
+      normalizeString(name) ??
+      (signupFallbackName || null);
+    const { data, error } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      user_metadata: {
+        name: safeName,
+        firstName: safeFirstName,
+        lastName: safeLastName,
+      },
+      email_confirm: true,
+    });
+
+    if (error) {
+      return c.json({ error: error.message }, 400);
+    }
+
+    const profile = buildSafeProfile(
+      data.user.id,
+      {},
+      {
+        email,
+        firstName: safeFirstName,
+        lastName: safeLastName,
+        name: safeName,
+      },
+      email
+    );
+
+    await kv.set(`profile:${data.user.id}`, profile);
+
+    return c.json({ success: true, user: data.user });
+  } catch (e) {
+    console.error("Signup error:", e);
+    return c.json({ error: e.message }, 500);
+  }
+});
   // Sections Configuration
   router.get("/sections", async (c) => {
     try {

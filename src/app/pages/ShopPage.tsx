@@ -7,7 +7,7 @@ import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { Filter, ChevronDown, X } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
 
 const categories = [
   { name: 'Toutes', slug: '' },
