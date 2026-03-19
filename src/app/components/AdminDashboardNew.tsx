@@ -431,7 +431,7 @@ const paginatedOrders = filteredOrders.slice(
           </div>
 
           <div className="bg-white border-2 border-gray-200 rounded-2xl p-6">
-            <h2 className="text-xl font-black mb-4">Commandes Récentes</h2>
+            <h2 className="text-xl font-black mb-4">Commandes Récentes Aujour </h2>
             <div className="space-y-3">
               {orders.slice(0, 5).map((order) => (
                 <div
