@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+/*import React, { useContext } from 'react';
 import { useNavigate } from 'react-router';
 import { AppContext } from '../layouts/RootLayout';
 import { AdminDashboardNew } from '../components/AdminDashboardNew';
@@ -42,5 +42,48 @@ export const AdminPage: React.FC = () => {
   }
 
   // Protection 3 : Tout est OK, afficher l'admin
-  return <AdminDashboardNew />;
+  const { user, isAdmin, userProfile } = useContext(AppContext);
+
+// Protection 1
+if (!user) {
+  setTimeout(() => navigate('/'), 100);
+  return <div>Pas connecté</div>;
+}
+
+// 🔥 TEMPORAIRE : DEBUG ADMIN
+return (
+  <pre style={{ padding: 20, fontSize: 14 }}>
+    {JSON.stringify(
+      {
+        email: user?.email,
+        userId: user?.id,
+        isAdmin,
+        userProfile,
+      },
+      null,
+      2
+    )}
+  </pre>
+);*/
+
+import React, { useContext } from 'react';
+import { AppContext } from '../layouts/RootLayout';
+
+export const AdminPage: React.FC = () => {
+  const { user, isAdmin, userProfile } = useContext(AppContext);
+
+  return (
+    <pre style={{ padding: 20, fontSize: 14, whiteSpace: 'pre-wrap' }}>
+      {JSON.stringify(
+        {
+          email: user?.email,
+          userId: user?.id,
+          isAdmin,
+          userProfile,
+        },
+        null,
+        2
+      )}
+    </pre>
+  );
 };

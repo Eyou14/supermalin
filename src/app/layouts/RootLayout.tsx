@@ -13,7 +13,7 @@ import { Product } from '../components/ProductCard';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 export interface AppContextType {
   cart: Product[];
@@ -115,10 +115,15 @@ export const RootLayout: React.FC = () => {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        setUserProfile(data);
-        setWalletBalance(Number(data.balance) || 0);
-        setIsAdmin(data.role === 'admin');
+  const data = await response.json();
+  console.log('FETCH PROFILE RESPONSE =', data);
+  console.log('FETCH PROFILE ROLE =', data?.role);
+  console.log('SET ADMIN TO =', data?.role === 'admin');
+
+  setUserProfile(data);
+  setWalletBalance(Number(data.balance) || 0);
+  setIsAdmin(data.role === 'admin');
+}
       } else {
         const defaultProfile = {
           userId,
