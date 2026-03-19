@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { toast } from "sonner";
 import { projectId, publicAnonKey } from 'utils/supabase/info';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 export const TradeInModule = ({ onNavigate }: { onNavigate?: (page: string) => void }) => {
   const [step, setStep] = useState(1);

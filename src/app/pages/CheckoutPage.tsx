@@ -6,7 +6,7 @@ import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 export const CheckoutPage: React.FC = () => {
   const navigate = useNavigate();
@@ -100,6 +100,8 @@ export const CheckoutPage: React.FC = () => {
         }, 1500);
       } else {
         const error = await response.json();
+	console.log('SESSION USER ID =', userId);
+	console.log('PROFILE API DATA =', data);
         console.error('❌ Erreur création commande:', error);
         toast.error(`Erreur: ${error.error || 'Impossible de créer la commande'}`);
       }

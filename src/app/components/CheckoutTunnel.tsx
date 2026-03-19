@@ -23,8 +23,7 @@ import { toast } from 'sonner';
 import { useStripe, useElements, CardElement } from '@stripe/react-stripe-js';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
-
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 interface CheckoutTunnelProps {
   cart: Product[];
   total: number;

@@ -25,7 +25,7 @@ import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { Product } from './ProductCard';
 import { useNavigate } from 'react-router';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`
 
 type TabType = 'dashboard' | 'products' | 'orders' | 'stock' | 'sections';
 

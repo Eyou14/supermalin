@@ -6,7 +6,7 @@ import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { AppContext } from '../layouts/RootLayout';
 import { supabase } from '/src/utils/supabase/client';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 export const AdminLoginPage: React.FC = () => {
   const navigate = useNavigate();

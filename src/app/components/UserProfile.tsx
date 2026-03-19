@@ -16,7 +16,7 @@ import { jsPDF } from 'jspdf';
 import { CollaborativeSellingDashboard } from './CollaborativeSellingDashboard';
 import { projectId, publicAnonKey } from 'utils/supabase/info';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+cconst API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 interface Transaction {
   id: string;

@@ -9,7 +9,7 @@ import { ChevronRight, ShieldCheck, TruckIcon, RefreshCcw, Zap } from 'lucide-re
 import { toast } from 'sonner';
 const hdfLogo = "/placeholder-hdf.png";
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 const categories = [
   { name: 'Téléphonie', icon: '📱', slug: 'telephonie' },

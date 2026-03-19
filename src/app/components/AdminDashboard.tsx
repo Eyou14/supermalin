@@ -32,12 +32,12 @@ import { projectId, publicAnonKey } from 'utils/supabase/info';
 import { Product } from './ProductCard';
 import { Logo } from './Logo';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 const supabaseClient = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
 const STORAGE_BUCKET = 'Products';
 
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 // Si besoin plus tard, remplace par :
 // const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 

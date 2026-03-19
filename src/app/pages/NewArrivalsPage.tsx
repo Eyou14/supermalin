@@ -7,7 +7,7 @@ import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { Package, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 export const NewArrivalsPage: React.FC = () => {
   const navigate = useNavigate();

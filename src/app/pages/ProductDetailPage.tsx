@@ -7,7 +7,7 @@ import { AppContext } from '../layouts/RootLayout';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { toast } from 'sonner';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();

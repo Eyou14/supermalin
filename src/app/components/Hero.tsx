@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/server`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 export const Hero = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
   const [bannerMessages, setBannerMessages] = useState({
