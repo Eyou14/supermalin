@@ -13,7 +13,7 @@ import { Product } from '../components/ProductCard';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 
-const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
+import { API_URL } from '/src/utils/api';
 
 export interface AppContextType {
   cart: Product[];
