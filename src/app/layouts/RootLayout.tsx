@@ -108,51 +108,40 @@ export const RootLayout: React.FC = () => {
     }
   };
 
-  const fetchUserProfile = async (userId: string) => {
-    try {
-      const response = await fetch(`${API_URL}/profile/${userId}`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
+ const fetchUserProfile = async (userId: string) => {
+  try {
+    const response = await fetch(`${API_URL}/profile/${userId}`, {
+      headers: { Authorization: `Bearer ${publicAnonKey}` },
+    });
 
-      if (response.ok) {
-  const data = await response.json();
-  console.log('FETCH PROFILE RESPONSE =', data);
-  console.log('FETCH PROFILE ROLE =', data?.role);
-  console.log('SET ADMIN TO =', data?.role === 'admin');
+    if (response.ok) {
+      const data = await response.json();
+      const role = data.role?.toLowerCase?.() || 'user';
 
-  setUserProfile(data);
-  setWalletBalance(Number(data.balance) || 0);
-  setIsAdmin(data.role === 'admin');
-}
-      } else {
-        const defaultProfile = {
-          userId,
-          balance: 0,
-          role: 'user',
-          createdAt: new Date().toISOString(),
-        };
+      console.log('✅ Profil chargé:', data.email, '→ rôle =', role);
 
-        const createResponse = await fetch(`${API_URL}/profile/${userId}`, {
-          method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${publicAnonKey}`,
-          },
-          body: JSON.stringify(defaultProfile),
-        });
-
-        if (createResponse.ok) {
-          const createdProfile = await createResponse.json();
-          setUserProfile(createdProfile);
-          setWalletBalance(0);
-          setIsAdmin(false);
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching profile:', error);
-      setIsAdmin(false);
+      setUserProfile(data);
+      setWalletBalance(Number(data.balance) || 0);
+      setIsAdmin(role === 'admin');
+      return;
     }
-  };
+
+    // Ne jamais écraser un admin si le profil n’existe pas dans le KV store
+    console.warn('⚠️ Profil absent du KV store, création légère sans override du rôle');
+    await fetch(`${API_URL}/profile/${userId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${publicAnonKey}`,
+      },
+      body: JSON.stringify({ userId }),
+    });
+  } catch (error) {
+    console.error('❌ Error fetching profile:', error);
+    setIsAdmin(false);
+  }
+};
+
 
   const updateUserProfile = async (updates: any) => {
     if (!user) return;
