@@ -525,17 +525,18 @@ const paginatedOrders = filteredOrders.slice(
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
                             <img
-                              src={product.image}
-                              alt={product.name}
-                              className="w-12 h-12 rounded-lg object-cover border border-gray-200"
-                            />
-                            <div>
-                              <p className="font-bold">{product.name}</p>
-                              <p className="text-xs text-gray-500">
-                                {product.description || product.condition || 'Sans description'}
-                              </p>
-                            </div>
+                                src={product.image_url || product.image || (product.images?.[0] ?? '')}
+                                alt={product.title || product.name || 'Produit'}
+                                className="w-12 h-12 rounded-lg object-cover border border-gray-200"
+                              />
+                              <div>
+                                <p className="font-bold">{product.title || product.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  {product.description || product.condition || 'Sans description'}
+                                </p>
+                              </div>
                           </div>
+
                         </td>
 
                         <td className="px-6 py-4 text-sm">{product.category || '-'}</td>
@@ -785,14 +786,14 @@ const paginatedOrders = filteredOrders.slice(
                     .map((product) => (
                       <tr key={product.id} className="border-b border-gray-100">
                         <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
+                         <div className="flex items-center gap-3">
                             <img
-                              src={product.image}
-                              alt={product.name}
+                              src={product.image_url || product.image || (product.images?.[0] ?? '')}
+                              alt={product.title || product.name || 'Produit'}
                               className="w-10 h-10 rounded-lg object-cover"
                             />
-                            <p className="font-medium">{product.name}</p>
-                          </div>
+                            <p className="font-medium">{product.title || product.name}</p>
+                        </div>
                         </td>
                         <td className="px-6 py-4 text-sm">{product.category}</td>
                         <td className="px-6 py-4">
