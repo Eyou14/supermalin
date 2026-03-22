@@ -56,15 +56,19 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     setIsLoading(true);
 
     try {
+      import { API_URL } from '/src/utils/api';
+
       if (mode === 'signup') {
-        import { API_URL } from '/src/utils/api', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${publicAnonKey}`
-          },
-          body: JSON.stringify(formData)
-        });
+        const response = await fetch(`${API_URL}/signup`, {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${publicAnonKey}`,
+      },
+    body: JSON.stringify(formData),
+  });
+}
+
 
         const result = await response.json();
 
