@@ -74,7 +74,7 @@ const buildSafeProfile = (
       ? existing.addresses
       : [],
     balance: Number(existing.balance) || 0,
-    role: normalizeString(existing.role) ?? 'user',
+    role: normalizeString(updates.role) ?? normalizeString(existing.role) ?? 'user',
     createdAt: existing.createdAt ?? new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   };
