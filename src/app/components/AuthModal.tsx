@@ -56,19 +56,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
     setIsLoading(true);
 
     try {
-      import { API_URL } from '/src/utils/api';
+      const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
       if (mode === 'signup') {
         const response = await fetch(`${API_URL}/signup`, {
-        method: 'POST',
-        headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${publicAnonKey}`,
-      },
-    body: JSON.stringify(formData),
-  });
-}
-
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${publicAnonKey}`
+          },
+          body: JSON.stringify(formData)
+        });
 
         const result = await response.json();
 

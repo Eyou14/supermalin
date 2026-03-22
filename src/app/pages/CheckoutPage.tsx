@@ -100,8 +100,6 @@ export const CheckoutPage: React.FC = () => {
         }, 1500);
       } else {
         const error = await response.json();
-	console.log('SESSION USER ID =', userId);
-	console.log('PROFILE API DATA =', data);
         console.error('❌ Erreur création commande:', error);
         toast.error(`Erreur: ${error.error || 'Impossible de créer la commande'}`);
       }

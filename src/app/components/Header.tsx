@@ -37,9 +37,9 @@ export const Header = ({
   const navItems = [
     { id: 'home', label: 'Accueil', icon: LayoutGrid, path: '/' },
     { id: 'shop', label: 'Boutique', icon: ShoppingCart, path: '/boutique' },
-    // Admin menu caché - accessible uniquement via easter egg (5 clics sur logo)
-    // ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: ShieldCheck, path: '/admin' }] : []),
+    { id: 'nouveaux-arrivages', label: 'Arrivages', icon: Zap, path: '/nouveaux-arrivages' },
     { id: 'contact', label: 'Contact', icon: Info, path: '/contact' },
+    ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: ShieldCheck, path: '/admin' }] : []),
   ];
 
   const handleUserClick = () => {

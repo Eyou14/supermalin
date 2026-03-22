@@ -117,9 +117,6 @@ export const RootLayout: React.FC = () => {
     if (response.ok) {
       const data = await response.json();
       const role = data.role?.toLowerCase?.() || 'user';
-
-      console.log('✅ Profil chargé:', data.email, '→ rôle =', role);
-
       setUserProfile(data);
       setWalletBalance(Number(data.balance) || 0);
       setIsAdmin(role === 'admin');

@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Mail, Phone, MapPin, Send, MessageSquare, Clock } from 'lucide-react';
 import { toast } from 'sonner';
+import { projectId, publicAnonKey } from '/utils/supabase/info';
+
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 export const ContactPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -15,12 +18,30 @@ export const ContactPage: React.FC = () => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate form submission
-    setTimeout(() => {
-      toast.success("Message envoyé avec succès ! Nous vous répondrons sous 24h.");
-      setFormData({ name: '', email: '', subject: '', message: '' });
+    try {
+      const response = await fetch(`${API_URL}/contact`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${publicAnonKey}`,
+        },
+        body: JSON.stringify(formData),
+      });
+
+      if (response.ok) {
+        toast.success("Message envoyé avec succès ! Nous vous répondrons sous 24h.");
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } else {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Erreur serveur');
+      }
+    } catch (error: any) {
+      // Fallback : copier l'email de contact si l'API échoue
+      toast.error("Envoi échoué. Contactez-nous directement à contact@supermalin.fr");
+      console.error('Contact form error:', error);
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
