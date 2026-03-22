@@ -57,7 +57,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose, onSuccess
 
     try {
       if (mode === 'signup') {
-        const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`, {
+        import { API_URL } from '/src/utils/api', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
