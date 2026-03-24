@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, 
@@ -34,7 +34,7 @@ interface CheckoutTunnelProps {
 }
 
 type Step = 'shipping' | 'payment' | 'confirmation';
-type ShippingMethod = 'mondial-relay' | 'colissimo' | 'chronopost';
+type ShippingMethod = 'colissimo' | 'chronopost';
 
 export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({ 
   cart, 
@@ -48,13 +48,13 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
   const elements = useElements();
   
   const [step, setStep] = useState<Step>('shipping');
-  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('mondial-relay');
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('colissimo');
   const [selectedRelay, setSelectedRelay] = useState<string | null>(null);
   const [useWallet, setUseWallet] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [postalCode, setPostalCode] = useState('');
-  const [city, setCity] = useState('');
-  const [address, setAddress] = useState('');
+  const [postalCode, setPostalCode] = useState(profile?.zipCode || '');
+  const [city, setCity] = useState(profile?.city || '');
+  const [address, setAddress] = useState(profile?.street || '');
   const [nearbyRelays, setNearbyRelays] = useState<any[]>([]);
 
   const steps = [
@@ -64,26 +64,19 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
   ];
 
   const shippingOptions = [
-    { 
-      id: 'mondial-relay' as ShippingMethod, 
-      name: 'Mondial Relay', 
-      description: 'Point relais - 3 à 4 jours', 
-      price: 0, 
-      color: 'green' 
+    {
+      id: 'colissimo' as ShippingMethod,
+      name: 'Colissimo',
+      description: 'Domicile - 2 à 3 jours',
+      price: 5.90,
+      color: 'blue'
     },
-    { 
-      id: 'colissimo' as ShippingMethod, 
-      name: 'Colissimo', 
-      description: 'Domicile - 2 à 3 jours', 
-      price: 5.90, 
-      color: 'blue' 
-    },
-    { 
-      id: 'chronopost' as ShippingMethod, 
-      name: 'Chronopost', 
-      description: 'Express - 24h à 48h', 
-      price: 12.90, 
-      color: 'orange' 
+    {
+      id: 'chronopost' as ShippingMethod,
+      name: 'Chronopost',
+      description: 'Express - 24h à 48h',
+      price: 12.90,
+      color: 'orange'
     },
   ];
 
@@ -114,6 +107,14 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
     ];
   };
 
+  // Pré-remplir les points relais si le profil a un code postal sauvegardé
+  useEffect(() => {
+    if (profile?.zipCode && profile.zipCode.length === 5 && nearbyRelays.length === 0) {
+      setNearbyRelays(generateRelayPoints(profile.zipCode));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handlePostalCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const code = e.target.value;
     setPostalCode(code);
@@ -141,11 +142,7 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
 
   const handleNext = async () => {
     if (step === 'shipping') {
-      if (shippingMethod === 'mondial-relay' && !selectedRelay) {
-        toast.error("Veuillez choisir un point relais.");
-        return;
-      }
-      if (shippingMethod !== 'mondial-relay' && (!address || !postalCode || !city)) {
+      if (!address || !postalCode || !city) {
         toast.error("Veuillez renseigner votre adresse de livraison.");
         return;
       }
@@ -276,25 +273,17 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                   <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
                     <MapPin className="text-orange-600" /> Livraison
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <button 
-                      onClick={() => setShippingMethod('mondial-relay')} 
-                      className={`p-6 rounded-3xl border-2 transition-all text-left ${shippingMethod === 'mondial-relay' ? 'border-green-600 bg-green-50/30' : 'border-gray-100 hover:border-gray-200'}`}
-                    >
-                       <h3 className="font-bold text-gray-900">Mondial Relay</h3>
-                       <p className="text-xs text-gray-500">Point relais - 3 à 4 jours</p>
-                       <p className="mt-4 text-xs font-black text-green-600 uppercase">Gratuit</p>
-                    </button>
-                    <button 
-                      onClick={() => setShippingMethod('colissimo')} 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setShippingMethod('colissimo')}
                       className={`p-6 rounded-3xl border-2 transition-all text-left ${shippingMethod === 'colissimo' ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100 hover:border-gray-200'}`}
                     >
                        <h3 className="font-bold text-gray-900">Colissimo</h3>
                        <p className="text-xs text-gray-500">Domicile - 2 à 3 jours</p>
                        <p className="mt-4 text-xs font-black text-gray-900 uppercase">+5.90€</p>
                     </button>
-                    <button 
-                      onClick={() => setShippingMethod('chronopost')} 
+                    <button
+                      onClick={() => setShippingMethod('chronopost')}
                       className={`p-6 rounded-3xl border-2 transition-all text-left ${shippingMethod === 'chronopost' ? 'border-orange-600 bg-orange-50/30' : 'border-gray-100 hover:border-gray-200'}`}
                     >
                        <h3 className="font-bold text-gray-900">Chronopost</h3>
@@ -302,66 +291,36 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                        <p className="mt-4 text-xs font-black text-gray-900 uppercase">+12.90€</p>
                     </button>
                   </div>
-                  {shippingMethod === 'mondial-relay' && (
-                    <div className="mt-6 space-y-3">
-                      <div className="flex items-center gap-4">
-                        <input 
-                          type="text" 
-                          value={postalCode} 
-                          onChange={handlePostalCodeChange} 
-                          placeholder="Code postal" 
-                          className="w-32 p-2 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none" 
-                        />
-                        <button 
-                          onClick={() => setNearbyRelays(generateRelayPoints(postalCode))}
-                          className="bg-orange-600 text-white px-4 py-2 rounded-lg"
-                        >
-                          Rechercher
-                        </button>
-                      </div>
-                      {relayPoints.map(r => (
-                        <button key={r.id} onClick={() => setSelectedRelay(r.id)} className={`w-full p-4 rounded-xl border text-left flex justify-between items-center ${selectedRelay === r.id ? 'border-orange-600 bg-orange-50' : 'border-gray-100'}`}>
-                          <div>
-                            <p className="text-sm font-bold">{r.name}</p>
-                            <p className="text-xs text-gray-400">{r.address}</p>
-                          </div>
-                          <span className="text-xs font-bold text-orange-600">{r.distance}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                  {shippingMethod !== 'mondial-relay' && (
-                    <div className="mt-6 space-y-3">
-                      <p className="text-sm font-bold text-gray-700 mb-3">📍 Adresse de livraison</p>
-                      <input 
-                        type="text" 
-                        value={address} 
-                        onChange={(e) => setAddress(e.target.value)} 
-                        placeholder="Numéro et nom de rue" 
-                        className="w-full p-3 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none" 
+                  <div className="mt-6 space-y-3">
+                    <p className="text-sm font-bold text-gray-700 mb-3">📍 Adresse de livraison</p>
+                    <input
+                      type="text"
+                      value={address}
+                      onChange={(e) => setAddress(e.target.value)}
+                      placeholder="Numéro et nom de rue"
+                      className="w-full p-3 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none"
+                      required
+                    />
+                    <div className="grid grid-cols-2 gap-3">
+                      <input
+                        type="text"
+                        value={postalCode}
+                        onChange={(e) => setPostalCode(e.target.value)}
+                        placeholder="Code postal"
+                        className="p-3 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none"
+                        maxLength={5}
                         required
                       />
-                      <div className="grid grid-cols-2 gap-3">
-                        <input 
-                          type="text" 
-                          value={postalCode} 
-                          onChange={(e) => setPostalCode(e.target.value)} 
-                          placeholder="Code postal" 
-                          className="p-3 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none" 
-                          maxLength={5}
-                          required
-                        />
-                        <input 
-                          type="text" 
-                          value={city} 
-                          onChange={(e) => setCity(e.target.value)} 
-                          placeholder="Ville" 
-                          className="p-3 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none" 
-                          required
-                        />
-                      </div>
+                      <input
+                        type="text"
+                        value={city}
+                        onChange={(e) => setCity(e.target.value)}
+                        placeholder="Ville"
+                        className="p-3 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none"
+                        required
+                      />
                     </div>
-                  )}
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -409,7 +368,7 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                 <CheckCircle2 size={64} className="mx-auto text-green-500 mb-6" />
                 <h2 className="text-3xl font-black mb-4">Commande Confirmée !</h2>
                 <p className="text-gray-500 mb-8">Votre commande SuperMalin a été enregistrée avec succès.</p>
-                <p className="text-sm text-gray-400 mb-6">Un email de confirmation vous a été envoyé.</p>
+                <p className="text-sm text-gray-400 mb-6">Retrouvez votre commande dans votre espace "Mon Compte".</p>
               </motion.div>
             )}
           </AnimatePresence>
@@ -432,12 +391,10 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                   <span className="text-gray-400">Sous-total</span>
                   <span>{safeTotal.toFixed(2)}€</span>
                 </div>
-                {shippingMethod !== 'mondial-relay' && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-gray-400">Livraison</span>
-                    <span>{shippingCost.toFixed(2)}€</span>
-                  </div>
-                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-400">Livraison</span>
+                  <span>{shippingCost.toFixed(2)}€</span>
+                </div>
                 {useWallet && (
                   <div className="flex justify-between text-sm text-orange-400">
                     <span>Remise Portefeuille</span>

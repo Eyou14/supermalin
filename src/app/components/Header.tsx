@@ -12,7 +12,7 @@ export const Header = ({
   cartCount, 
   onNavigate, 
   onAuthOpen,
-  isLoggedIn = true,
+  isLoggedIn = false,
   isAdmin = false,
   user = null,
   profile = null

@@ -83,7 +83,7 @@ export const ShopPage: React.FC = () => {
   };
 
   const filteredProducts = products.filter(p => {
-    if (selectedCategory && p.category !== selectedCategory) return false;
+    if (selectedCategory && p.category?.toLowerCase() !== selectedCategory.toLowerCase()) return false;
     if (selectedCondition && p.condition !== selectedCondition) return false;
     if (p.price < priceRange[0] || p.price > priceRange[1]) return false;
     if (inStockOnly && (!p.stock || p.stock === 0)) return false;

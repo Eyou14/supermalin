@@ -9,7 +9,6 @@ import {
   Share2,
   ChevronLeft,
   Info,
-  Eye,
   TrendingUp,
   Package,
   Truck,
@@ -156,12 +155,6 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                 </div>
               </div>
             )}
-            <div className="absolute bottom-6 right-6 flex gap-3">
-              <div className="bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl text-[10px] font-black uppercase flex items-center gap-2 border border-white/20 shadow-lg">
-                <Eye size={14} className="text-blue-600" />
-                {Math.floor(Math.random() * 200) + 50} Vues aujourd'hui
-              </div>
-            </div>
           </div>
 
           <div className="grid grid-cols-5 gap-4">
@@ -372,15 +365,27 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                     </button>
                   </div>
 
-                  <div className="bg-green-50 p-4 rounded-2xl flex items-center gap-3 border border-green-100">
-                    <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
-                      <Truck size={20} />
+                  {(product.stock === undefined || product.stock === null || product.stock > 0) ? (
+                    <div className="bg-green-50 p-4 rounded-2xl flex items-center gap-3 border border-green-100">
+                      <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center text-green-600">
+                        <Truck size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-green-800">En stock : Expédition sous 48h</p>
+                        <p className="text-[10px] text-green-700">Livraison Colissimo ou Chronopost</p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-green-800">En stock : Expédition aujourd'hui</p>
-                      <p className="text-[10px] text-green-700">Livraison estimée : 18 - 20 Février</p>
+                  ) : (
+                    <div className="bg-red-50 p-4 rounded-2xl flex items-center gap-3 border border-red-100">
+                      <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-red-600">
+                        <Truck size={20} />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-red-800">Rupture de stock</p>
+                        <p className="text-[10px] text-red-700">Ce produit n'est plus disponible</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>

@@ -15,111 +15,75 @@ export const ResetPasswordPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isValidToken, setIsValidToken] = useState(false);
   const [isCheckingToken, setIsCheckingToken] = useState(true);
+  const [sessionReady, setSessionReady] = useState(false);
 
   useEffect(() => {
-    const handlePasswordReset = async () => {
-      console.log('🔍 ResetPasswordPage - Début de la vérification du token');
-      console.log('URL complète:', window.location.href);
-      console.log('Search params:', window.location.search);
-      console.log('Hash:', window.location.hash);
-      
-      try {
-        // MODE DÉVELOPPEMENT : Contourner le rate limiting
-        const devMode = searchParams.get('dev_mode');
-        const devEmail = searchParams.get('email');
-        
-        if (devMode === 'true' && devEmail) {
-          console.log('🛠️ MODE DÉVELOPPEMENT ACTIVÉ pour:', devEmail);
-          console.log('⚠️ Création d\'une session de développement sans vérification email');
-          
-          // En mode dev, on autorise directement le reset sans vérifier le token email
-          // ATTENTION : Ne jamais utiliser en production !
-          setIsValidToken(true);
-          setIsCheckingToken(false);
-          
-          toast.success('Mode développement activé', {
-            description: '⚠️ Session temporaire créée pour contourner le rate limiting'
-          });
-          
-          return;
-        }
-        
-        // Méthode 1 : PKCE flow avec code dans l'URL (?code=...)
-        const code = searchParams.get('code');
-        
-        if (code) {
-          console.log('✅ Code PKCE détecté dans URL:', code.substring(0, 20) + '...');
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-          
-          if (error) {
-            console.error('❌ Erreur lors de l\'échange du code:', error);
-            throw error;
-          }
-          
-          if (data.session) {
-            console.log('✅ Session établie avec succès via code PKCE');
-            setIsValidToken(true);
-            setIsCheckingToken(false);
-            return;
-          }
-        }
+    let resolved = false;
 
-        // Méthode 2 : Implicit flow avec access_token dans le hash (#access_token=...)
-        const hashParams = new URLSearchParams(window.location.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
-        const refreshToken = hashParams.get('refresh_token');
-        const type = hashParams.get('type');
-        
-        console.log('Type dans hash:', type);
-        console.log('Access token présent:', !!accessToken);
+    const resolve = (valid: boolean) => {
+      if (resolved) return;
+      resolved = true;
+      setIsValidToken(valid);
+      setIsCheckingToken(false);
+      if (valid) setSessionReady(true);
+    };
 
-        if (type === 'recovery' && accessToken) {
-          console.log('✅ Token de récupération détecté dans le hash');
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || ''
-          });
+    // Méthode 1 (officielle) : écouter l'événement PASSWORD_RECOVERY de Supabase
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔐 Auth event:', event, '| Session:', !!session);
 
-          if (error) {
-            console.error('❌ Erreur lors de la définition de la session:', error);
-            throw error;
-          }
-
-          console.log('✅ Session établie avec succès via hash');
-          setIsValidToken(true);
-          setIsCheckingToken(false);
-          return;
-        }
-
-        // Méthode 3 : Vérifier si une session de récupération existe déjà
-        const { data: { session } } = await supabase.auth.getSession();
-        
+      if (event === 'PASSWORD_RECOVERY' || event === 'SIGNED_IN') {
         if (session) {
-          console.log('Session de récupération existante trouvée');
-          setIsValidToken(true);
-          setIsCheckingToken(false);
-          return;
+          console.log('✅ Session de récupération reçue via onAuthStateChange');
+          resolve(true);
         }
+      }
+    });
 
-        // Aucun token valide trouvé
-        console.warn('Aucun token de réinitialisation valide trouvé');
+    // Méthode 2 : PKCE flow (?code=...)
+    const code = searchParams.get('code');
+    if (code) {
+      console.log('🔑 Code PKCE détecté');
+      supabase.auth.exchangeCodeForSession(code)
+        .then(({ data, error }) => {
+          if (error) {
+            console.error('❌ Erreur PKCE:', error);
+          } else if (data.session) {
+            console.log('✅ Session PKCE établie');
+            resolve(true);
+          }
+        });
+    }
+
+    // Méthode 3 : Mode développement
+    const devMode = searchParams.get('dev_mode');
+    const devEmail = searchParams.get('email');
+    if (devMode === 'true' && devEmail) {
+      console.log('🛠️ Mode développement activé');
+      toast.success('Mode développement activé', {
+        description: '⚠️ Session temporaire pour tests'
+      });
+      resolve(true);
+      subscription.unsubscribe();
+      return;
+    }
+
+    // Fallback : timeout après 5s — si toujours pas de session, lien invalide
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        console.warn('⏱️ Timeout : aucun token valide détecté');
         toast.error('Lien invalide ou expiré', {
           description: 'Veuillez demander un nouveau lien de réinitialisation.'
         });
+        resolve(false);
         setTimeout(() => navigate('/forgot-password'), 3000);
-        setIsCheckingToken(false);
-
-      } catch (error: any) {
-        console.error('Erreur lors de la gestion du token:', error);
-        toast.error('Erreur', {
-          description: error.message || 'Lien invalide ou expiré.'
-        });
-        setTimeout(() => navigate('/forgot-password'), 3000);
-        setIsCheckingToken(false);
       }
-    };
+    }, 5000);
 
-    handlePasswordReset();
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, [searchParams, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -134,8 +98,8 @@ export const ResetPasswordPage: React.FC = () => {
 
     const { isValid } = validatePassword(password);
     if (!isValid) {
-      toast.error("Mot de passe non conforme", {
-        description: "Veuillez respecter tous les critères de sécurité."
+      toast.error('Mot de passe non conforme', {
+        description: 'Veuillez respecter tous les critères de sécurité.'
       });
       return;
     }
@@ -143,9 +107,17 @@ export const ResetPasswordPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      });
+      // Vérifier que la session est toujours active
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('Session expirée', {
+          description: 'Veuillez demander un nouveau lien de réinitialisation.'
+        });
+        setTimeout(() => navigate('/forgot-password'), 2000);
+        return;
+      }
+
+      const { error } = await supabase.auth.updateUser({ password });
 
       if (error) throw error;
 
@@ -153,10 +125,9 @@ export const ResetPasswordPage: React.FC = () => {
         description: 'Vous êtes maintenant connecté avec votre nouveau mot de passe.'
       });
 
-      // Rediriger vers la page d'accueil après 2 secondes
       setTimeout(() => navigate('/'), 2000);
     } catch (error: any) {
-      console.error('Erreur lors de la mise à jour du mot de passe:', error);
+      console.error('❌ Erreur updateUser:', error);
       toast.error('Erreur', {
         description: error.message || 'Impossible de réinitialiser le mot de passe.'
       });
@@ -184,13 +155,22 @@ export const ResetPasswordPage: React.FC = () => {
             <AlertCircle className="text-red-600" size={40} />
           </div>
           <h1 className="text-2xl font-black text-gray-900 mb-4">Lien invalide</h1>
-          <p className="text-gray-600">
-            Ce lien de réinitialisation est invalide ou a expiré. Veuillez demander un nouveau lien.
+          <p className="text-gray-600 mb-6">
+            Ce lien de réinitialisation est invalide ou a expiré.
           </p>
+          <button
+            onClick={() => navigate('/forgot-password')}
+            className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all"
+          >
+            Demander un nouveau lien
+          </button>
         </div>
       </div>
     );
   }
+
+  const passwordValid = validatePassword(password).isValid;
+  const canSubmit = !isLoading && password === confirmPassword && password.length > 0 && passwordValid;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-blue-50 flex items-center justify-center p-4">
@@ -212,7 +192,6 @@ export const ResetPasswordPage: React.FC = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                minLength={6}
                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all pl-12 pr-12"
               />
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
@@ -224,7 +203,6 @@ export const ResetPasswordPage: React.FC = () => {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
-            
             <PasswordValidator password={password} showCriteria={true} />
           </div>
 
@@ -237,7 +215,6 @@ export const ResetPasswordPage: React.FC = () => {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 required
-                minLength={6}
                 className="w-full bg-gray-50 border border-gray-200 rounded-2xl px-5 py-4 text-sm outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500 transition-all pl-12 pr-12"
               />
               <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={20} />
@@ -256,26 +233,31 @@ export const ResetPasswordPage: React.FC = () => {
               password === confirmPassword ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'
             }`}>
               {password === confirmPassword ? (
-                <>
-                  <CheckCircle size={16} />
-                  Les mots de passe correspondent
-                </>
+                <><CheckCircle size={16} /> Les mots de passe correspondent</>
               ) : (
-                <>
-                  <AlertCircle size={16} />
-                  Les mots de passe ne correspondent pas
-                </>
+                <><AlertCircle size={16} /> Les mots de passe ne correspondent pas</>
               )}
             </div>
           )}
 
           <button
             type="submit"
-            disabled={isLoading || password !== confirmPassword}
-            className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-lg disabled:opacity-50"
+            disabled={!canSubmit}
+            className="w-full bg-orange-600 text-white py-4 rounded-2xl font-bold hover:bg-orange-700 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isLoading ? 'Réinitialisation...' : 'Réinitialiser le mot de passe'}
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" />
+                Réinitialisation...
+              </span>
+            ) : 'Réinitialiser le mot de passe'}
           </button>
+
+          {!canSubmit && password.length > 0 && password === confirmPassword && !passwordValid && (
+            <p className="text-xs text-center text-orange-600">
+              Le mot de passe doit respecter tous les critères ci-dessus
+            </p>
+          )}
         </form>
       </div>
     </div>

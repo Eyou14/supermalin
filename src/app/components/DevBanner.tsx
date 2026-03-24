@@ -5,8 +5,12 @@ import { Link } from 'react-router';
 export const DevBanner: React.FC = () => {
   const [isVisible, setIsVisible] = useState(true);
 
-  // Ne pas afficher en production
-  if (window.location.hostname === 'supermalin.fr' || window.location.hostname === 'www.supermalin.fr') {
+  // Ne pas afficher en production (build Vite) ni sur supermalin.fr
+  if (
+    import.meta.env.PROD ||
+    window.location.hostname === 'supermalin.fr' ||
+    window.location.hostname === 'www.supermalin.fr'
+  ) {
     return null;
   }
 

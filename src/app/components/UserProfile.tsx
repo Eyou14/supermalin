@@ -16,7 +16,7 @@ import { jsPDF } from 'jspdf';
 import { CollaborativeSellingDashboard } from './CollaborativeSellingDashboard';
 import { projectId, publicAnonKey } from 'utils/supabase/info';
 
-cconst API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
+const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 interface Transaction {
   id: string;
@@ -193,6 +193,56 @@ export const UserProfile = ({
     toast.success('Facture téléchargée !');
   };
 
+  const handleDownloadOrderInvoice = (order: any) => {
+    const doc = new jsPDF();
+
+    doc.setFillColor(234, 88, 12);
+    doc.rect(0, 0, 210, 40, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(24);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SUPERMALIN', 20, 25);
+    doc.setFontSize(10);
+    doc.text('Facture', 170, 25);
+
+    doc.setTextColor(50, 50, 50);
+    doc.setFontSize(12);
+    doc.text(`Client: ${profile?.name || user?.user_metadata?.name || 'Client SuperMalin'}`, 20, 60);
+    doc.text(`Email: ${user?.email || ''}`, 20, 67);
+    doc.text(`Date: ${new Date(order.createdAt).toLocaleDateString('fr-FR')}`, 20, 74);
+    doc.text(`Commande N°: ${order.id}`, 20, 81);
+
+    doc.setFillColor(245, 245, 245);
+    doc.rect(20, 100, 170, 10, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.text('Article', 25, 107);
+    doc.text('Montant', 160, 107);
+
+    doc.setFont('helvetica', 'normal');
+    let y = 120;
+    (order.items || []).forEach((item: any) => {
+      doc.text(String(item.name || item.title || 'Produit').substring(0, 60), 25, y);
+      doc.text(`${Number(item.price || 0).toFixed(2)}€`, 160, y);
+      y += 10;
+    });
+
+    doc.setDrawColor(200, 200, 200);
+    doc.line(20, y + 5, 190, y + 5);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TOTAL TTC', 130, y + 15);
+    doc.text(`${Number(order.total || 0).toFixed(2)}€`, 160, y + 15);
+
+    doc.setFontSize(8);
+    doc.setTextColor(150, 150, 150);
+    doc.text('SuperMalin SAS - SIRET: 92822322100013', 105, 275, { align: 'center' });
+    doc.text('Hauts-de-France, France', 105, 280, { align: 'center' });
+    doc.text('Email: contact@supermalin.fr - Tél: 0977454776', 105, 285, { align: 'center' });
+    doc.text('Merci pour votre confiance !', 105, 290, { align: 'center' });
+
+    doc.save(`Facture-SuperMalin-${order.id}.pdf`);
+    toast.success('Facture téléchargée !');
+  };
+
   const handleAvatarClick = () => {
     fileInputRef.current?.click();
   };
@@ -208,6 +258,9 @@ export const UserProfile = ({
     try {
       const response = await fetch(`${API_URL}/profile/${user.id}/avatar`, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${publicAnonKey}`,
+        },
         body: formData,
       });
 
@@ -320,9 +373,11 @@ export const UserProfile = ({
                 })}
               </p>
 
-              <div className="mt-2 flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 rounded-full text-[10px] font-black uppercase">
-                <CheckCircle2 size={12} /> Compte Vérifié
-              </div>
+              {user?.email_confirmed_at && (
+                <div className="mt-2 flex items-center gap-1.5 px-3 py-1 bg-green-50 text-green-700 rounded-full text-[10px] font-black uppercase">
+                  <CheckCircle2 size={12} /> Compte Vérifié
+                </div>
+              )}
             </div>
 
             <nav className="space-y-1">
@@ -428,9 +483,12 @@ export const UserProfile = ({
 
                       <div className="flex flex-col items-end">
                         <div className="text-xl font-black text-gray-900">
-                          {Number(order.total || 0).toLocaleString()}€
+                          {Number(order.total || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}€
                         </div>
-                        <button className="text-[10px] font-bold text-blue-600 uppercase mt-2 flex items-center gap-1">
+                        <button
+                          onClick={() => handleDownloadOrderInvoice(order)}
+                          className="text-[10px] font-bold text-blue-600 uppercase mt-2 flex items-center gap-1 hover:text-blue-800 transition-colors"
+                        >
                           <Download size={12} /> Facture
                         </button>
                       </div>

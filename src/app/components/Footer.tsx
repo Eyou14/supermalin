@@ -1,7 +1,7 @@
-import { Gavel, Facebook, Twitter, Instagram, Youtube, Mail, Phone, MapPin, LayoutDashboard } from "lucide-react";
+import { Gavel, Mail, Phone, MapPin, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Logo } from "./Logo";
-const hdfLogo = "/placeholder-hdf.png";
+const hdfLogo = "/logo-hdf.svg";
 
 export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) => {
   const navigate = useNavigate();
@@ -36,13 +36,6 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
             <p className="text-gray-500 text-sm leading-relaxed">
               Plateforme française de déstockage. Arrivages fréquents, prix justes et transparents.
             </p>
-            <div className="flex items-center gap-4">
-              {[Facebook, Twitter, Instagram, Youtube].map((Icon, i) => (
-                <a key={i} href="#" className="p-2 bg-gray-50 text-gray-400 hover:text-orange-600 hover:bg-orange-50 rounded-full transition-all">
-                  <Icon size={20} />
-                </a>
-              ))}
-            </div>
           </div>
 
           {/* Links */}
@@ -115,7 +108,7 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
 
         {/* Partner Section */}
         <div className="mb-12 flex items-center justify-center gap-8 p-6 bg-blue-50 rounded-2xl">
-          <img src={hdfLogo} alt="Région Hauts-de-France" className="h-12" />
+          <img src={hdfLogo} alt="Région Hauts-de-France" className="h-16 w-auto" />
           <p className="text-sm text-gray-700 max-w-md">
             SuperMalin est soutenu par la <strong>Région Hauts-de-France</strong> dans le cadre de son développement.
           </p>

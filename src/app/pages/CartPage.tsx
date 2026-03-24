@@ -44,13 +44,13 @@ export const CartPage: React.FC = () => {
           <div className="lg:col-span-2 space-y-4">
             {cart?.map((item, i) => (
               <div key={i} className="bg-white p-4 rounded-3xl border-2 border-gray-200 flex gap-6 items-center hover:border-orange-600 transition-all">
-                <img 
-                  src={item.image} 
-                  alt={item.name}
-                  className="w-24 h-24 object-cover rounded-xl" 
+                <img
+                  src={item.image_url || item.image || ''}
+                  alt={item.title || item.name || 'Produit'}
+                  className="w-24 h-24 object-cover rounded-xl bg-gray-100"
                 />
                 <div className="flex-1">
-                  <h3 className="font-bold text-lg mb-1">{item.name}</h3>
+                  <h3 className="font-bold text-lg mb-1">{item.title || item.name}</h3>
                   <p className="text-sm text-gray-600 mb-2">{item.condition}</p>
                   <p className="text-orange-600 font-black text-xl">{item.price}€</p>
                 </div>

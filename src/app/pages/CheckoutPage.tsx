@@ -32,11 +32,11 @@ export const CheckoutPage: React.FC = () => {
       const walletUsed = usedWallet ? Math.min(walletBalance, cartTotal) : 0;
       const remainingTotal = cartTotal - walletUsed;
       const finalTotal = remainingTotal + shippingCost;
-      
+
       const orderData = {
         userId: user?.id || 'anonymous',
         items: cart,
-        total: cartTotal + shippingCost,
+        total: finalTotal,
         walletUsed,
         shippingCost,
         shippingMethod,
@@ -94,10 +94,10 @@ export const CheckoutPage: React.FC = () => {
           colors: ['#f97316', '#fb923c', '#ffffff', '#0055A4']
         });
         
-        // Redirect to success page or home
+        // Redirect to orders history
         setTimeout(() => {
-          navigate('/', { replace: true });
-        }, 1500);
+          navigate('/profil', { replace: true });
+        }, 3000);
       } else {
         const error = await response.json();
         console.error('❌ Erreur création commande:', error);
@@ -131,7 +131,10 @@ export const CheckoutPage: React.FC = () => {
       profile={{
         userId: user?.id,
         name: user?.user_metadata?.name || userProfile?.name || 'Client',
-        email: user?.email || userProfile?.email || ''
+        email: user?.email || userProfile?.email || '',
+        street: userProfile?.street || '',
+        zipCode: userProfile?.zipCode || '',
+        city: userProfile?.city || '',
       }}
       onBack={() => navigate('/panier')}
       onComplete={finalizeCheckout}

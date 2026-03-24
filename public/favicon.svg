@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Fond orange -->
+  <rect width="32" height="32" rx="8" fill="#ea580c"/>
+  <!-- Éclair blanc (Zap) -->
+  <path d="M18 3L8 17h7l-1 12 11-14h-7z" fill="white"/>
+</svg>

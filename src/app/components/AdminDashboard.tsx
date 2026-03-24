@@ -33,8 +33,7 @@ import { Product } from './ProductCard';
 import { Logo } from './Logo';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
-const supabaseUrl = `https://${projectId}.supabase.co`;
-const supabaseClient = createClient(supabaseUrl, publicAnonKey);
+const supabaseClient = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
 const STORAGE_BUCKET = 'Products';
 
 interface TradeRequest {
@@ -67,122 +66,78 @@ interface TransactionData {
   status: string;
 }
 
-const sanitizeFileName = (fileName: string) => {
-  const ext = fileName.split('.').pop() || 'png';
-  const base = fileName
-    .replace(/\.[^/.]+$/, '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9-_]/g, '-')
-    .replace(/-+/g, '-')
-    .toLowerCase();
-
-  return `${base}-${Date.now()}.${ext}`;
-};
-
-const uploadProductImages = async (files: File[]) => {
-  const uploadedUrls: string[] = [];
-
-  for (const file of files) {
-    const fileName = sanitizeFileName(file.name);
-    const filePath = fileName;
-
-    const { error } = await supabaseClient.storage
-      .from(STORAGE_BUCKET)
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
-      });
-
-    if (error) {
-      throw new Error(`Upload failed for ${file.name}: ${error.message}`);
-    }
-
-    const { data } = supabaseClient.storage
-      .from(STORAGE_BUCKET)
-      .getPublicUrl(filePath);
-
-    uploadedUrls.push(data.publicUrl);
-  }
-
-  return uploadedUrls;
-};
-
 export const AdminDashboard = () => {
-
   const [activeTab, setActiveTab] = useState<'requests' | 'inventory' | 'users' | 'transactions' | 'orders'>('requests');
   const [requests, setRequests] = useState<TradeRequest[]>([]);
   const [inventory, setInventory] = useState<Product[]>([]);
-const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [users, setUsers] = useState<UserProfileData[]>([]);
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
-
   const [searchTerm, setSearchTerm] = useState('');
 
- const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
-  e.preventDefault();
+  const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const formData = new FormData(e.currentTarget);
+      let imageUrls: string[] = [];
 
-  try {
-    const formData = new FormData(e.currentTarget);
+      // Upload images vers Supabase Storage
+      for (const file of selectedFiles) {
+        const fileName = `${Date.now()}-${file.name.replaceAll(' ', '-')}`;
 
-    let imageUrls: string[] = [];
+        const { error } = await supabaseClient.storage
+          .from(STORAGE_BUCKET)
+          .upload(fileName, file);
 
-    // Upload images vers Supabase Storage
-    for (const file of selectedFiles) {
-      const fileName = `${Date.now()}-${file.name.replaceAll(" ", "-")}`;
+        if (error) {
+          throw new Error(`Échec upload ${file.name}: ${error.message}`);
+        }
 
-     const { error } = await supabaseClient.storage
-  .from(STORAGE_BUCKET)
-  .upload(fileName, file);
+        const { data } = supabaseClient.storage
+          .from(STORAGE_BUCKET)
+          .getPublicUrl(fileName);
 
-const { data } = supabaseClient.storage
-  .from(STORAGE_BUCKET)
-  .getPublicUrl(fileName);
+        imageUrls.push(data.publicUrl);
+      }
 
-      imageUrls.push(data.publicUrl);
+      const productData = {
+        name: formData.get('name') as string,
+        price: parseFloat(formData.get('price') as string),
+        description: formData.get('description') as string,
+        category: formData.get('category') as string,
+        type: formData.get('type') as 'direct' | 'auction',
+        condition: formData.get('condition') as string,
+        stock: parseInt(formData.get('stock') as string) || 1,
+        // 🔥 IMPORTANT
+        image: imageUrls[0] || null,
+        images: imageUrls,
+      };
+
+      const response = await fetch(`${API_URL}/products`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${publicAnonKey}`,
+        },
+        body: JSON.stringify(productData),
+      });
+
+      if (!response.ok) throw new Error();
+
+      toast.success('Produit ajouté avec images 🚀');
+      setIsAddModalOpen(false);
+      setSelectedFiles([]);
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      toast.error('Erreur upload produit');
     }
-
-    const productData = {
-      name: formData.get("name") as string,
-      price: parseFloat(formData.get("price") as string),
-      description: formData.get("description") as string,
-      category: formData.get("category") as string,
-      type: formData.get("type") as "direct" | "auction",
-      condition: formData.get("condition") as string,
-      stock: parseInt(formData.get("stock") as string) || 1,
-
-      // 🔥 IMPORTANT
-      image: imageUrls[0] || null,
-      images: imageUrls,
-    };
-
-    const response = await fetch(`${API_URL}/products`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${publicAnonKey}`,
-      },
-      body: JSON.stringify(productData),
-    });
-
-    if (!response.ok) throw new Error();
-
-    toast.success("Produit ajouté avec images 🚀");
-    setIsAddModalOpen(false);
-    setSelectedFiles([]);
-    fetchData();
-
-  } catch (e) {
-    console.error(e);
-    toast.error("Erreur upload produit");
-  }
-};
+  };
 
   useEffect(() => {
     fetchData();
@@ -224,7 +179,6 @@ const { data } = supabaseClient.storage
       password: formData.get('password') as string,
       name: formData.get('name') as string,
     };
-
     try {
       const response = await fetch(`${API_URL}/signup`, {
         method: 'POST',
@@ -334,7 +288,6 @@ const { data } = supabaseClient.storage
               {activeTab === 'orders' && 'Gestion des Commandes'}
             </h1>
           </div>
-
           <div className="flex items-center gap-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
@@ -604,7 +557,6 @@ const { data } = supabaseClient.storage
                         (item.images && item.images.length > 0 ? item.images[0] : '') ||
                         '';
                       const itemTitle = item.title || item.name || 'Produit';
-
                       return (
                         <tr key={item.id} className="hover:bg-gray-50/50 transition-all group">
                           <td className="px-6 py-4">
@@ -656,7 +608,7 @@ const { data } = supabaseClient.storage
               exit={{ opacity: 0, scale: 0.95 }}
               className="relative bg-white w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh]"
             >
-              <h2 className="text-2xl font-black mb-6">Ajouter un produit TEST 123</h2>
+              <h2 className="text-2xl font-black mb-6">Ajouter un produit</h2>
               <form onSubmit={handleAddProduct} className="grid grid-cols-2 gap-4">
                 <div className="col-span-2 space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400">Nom du produit</label>
@@ -666,7 +618,6 @@ const { data } = supabaseClient.storage
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
                   />
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400">Prix (€)</label>
                   <input
@@ -677,7 +628,6 @@ const { data } = supabaseClient.storage
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
                   />
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400">Stock</label>
                   <input
@@ -687,19 +637,17 @@ const { data } = supabaseClient.storage
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
                   />
                 </div>
-
                 <div className="col-span-2 space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400">Images produit</label>
-                  <input 
-  type="file"
-  multiple
-  accept="image/*"
-  onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
-  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm"
-/>
+                  <input
+                    type="file"
+                    multiple
+                    accept="image/*"
+                    onChange={(e) => setSelectedFiles(Array.from(e.target.files || []))}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm"
+                  />
                   <p className="text-xs text-gray-400">Vous pouvez sélectionner plusieurs images.</p>
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400">Catégorie</label>
                   <select
@@ -708,14 +656,16 @@ const { data } = supabaseClient.storage
                   >
                     <option value="telephonie">Téléphonie</option>
                     <option value="informatique">Informatique</option>
-                    <option value="cuisine">Cuisine</option>
+                    <option value="audio-video">Audio / Vidéo</option>
+                    <option value="gaming">Gaming</option>
                     <option value="maison">Maison</option>
+                    <option value="cuisine">Cuisine</option>
                     <option value="vetements">Vêtements</option>
                     <option value="cosmetiques">Cosmétiques</option>
-                    <option value="autre">Autre</option>
+                    <option value="accessoires">Accessoires</option>
+                    <option value="divers">Divers Arrivages</option>
                   </select>
                 </div>
-
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400">État</label>
                   <select
@@ -731,7 +681,6 @@ const { data } = supabaseClient.storage
                     <option value="Pour pièces">Pour pièces</option>
                   </select>
                 </div>
-
                 <div className="col-span-2 space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400">Description</label>
                   <textarea
@@ -740,21 +689,18 @@ const { data } = supabaseClient.storage
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none resize-none"
                   />
                 </div>
-
                 <div className="col-span-1 flex items-center gap-2">
                   <input type="checkbox" name="isNewArrival" id="isNewArrival" />
                   <label htmlFor="isNewArrival" className="text-sm font-medium">
                     Nouvel arrivage
                   </label>
                 </div>
-
                 <div className="col-span-1 flex items-center gap-2">
                   <input type="checkbox" name="isFeatured" id="isFeatured" />
                   <label htmlFor="isFeatured" className="text-sm font-medium">
                     Produit mis en avant
                   </label>
                 </div>
-
                 <button
                   type="submit"
                   className="col-span-2 bg-orange-600 text-white py-4 rounded-xl font-bold mt-4 hover:bg-orange-700 transition-all"

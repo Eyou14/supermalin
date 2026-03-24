@@ -7,7 +7,7 @@ import { AppContext } from '../layouts/RootLayout';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 import { ChevronRight, ShieldCheck, TruckIcon, RefreshCcw, Zap } from 'lucide-react';
 import { toast } from 'sonner';
-const hdfLogo = "/placeholder-hdf.png";
+const hdfLogo = "/logo-hdf.svg";
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
@@ -26,7 +26,7 @@ const categories = [
 
 export const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  const { addToCart, wishlist, toggleWishlist } = useContext(AppContext);
+  const { addToCart, wishlist, toggleWishlist, isAdmin } = useContext(AppContext);
   const [products, setProducts] = useState<Product[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -186,17 +186,19 @@ export const HomePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Bouton flottant Debug Admin - Accessible à tous pour diagnostic */}
-      <button
-        onClick={() => navigate('/debug-admin')}
-        className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/50 hover:scale-110 transition-all z-40 group"
-        title="Accès Debug Admin"
-      >
-        <Zap size={24} className="group-hover:rotate-12 transition-transform" />
-        <span className="absolute -top-10 right-0 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-          Debug Admin
-        </span>
-      </button>
+      {/* Bouton flottant Debug Admin - Visible seulement pour les admins */}
+      {isAdmin && (
+        <button
+          onClick={() => navigate('/debug-admin')}
+          className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/50 hover:scale-110 transition-all z-40 group"
+          title="Accès Debug Admin"
+        >
+          <Zap size={24} className="group-hover:rotate-12 transition-transform" />
+          <span className="absolute -top-10 right-0 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            Debug Admin
+          </span>
+        </button>
+      )}
     </div>
   );
 };
