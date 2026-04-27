@@ -139,17 +139,6 @@ export const Header = ({
             </button>
           ))}
           
-          {/* Admin Badge - Visible seulement pour les admins */}
-          {isAdmin && (
-            <button
-              onClick={() => navigate('/admin')}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-full text-xs font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105"
-              title="Accès Administration"
-            >
-              <ShieldCheck size={14} />
-              Admin
-            </button>
-          )}
         </nav>
 
         {/* Search - Desktop */}
@@ -182,18 +171,7 @@ export const Header = ({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Badge Admin */}
-          {isAdmin && (
-            <button 
-              onClick={() => navigate('/admin')}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 transition-all shadow-md"
-            >
-              <ShieldCheck size={14} />
-              Admin
-            </button>
-          )}
-          
-          <button 
+          <button
             onClick={handleUserClick}
             className={`rounded-full transition-colors relative group ${
               isActive('/profil') ? 'ring-2 ring-orange-500' : 'hover:ring-2 hover:ring-gray-200'

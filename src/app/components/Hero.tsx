@@ -61,7 +61,7 @@ export const Hero = ({ onNavigate }: { onNavigate: (page: string) => void }) => 
           initial={{ opacity: 0, scale: 1.04 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, ease: "easeOut" }}
-          src="https://images.unsplash.com/photo-1611532736597-de2d4265fba3?q=80&w=1400&auto=format&fit=crop"
+          src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?q=80&w=1400&auto=format&fit=crop"
           className="w-full h-full object-cover object-center"
           alt="MacBook et iPhone — SuperMalin"
         />
