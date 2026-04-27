@@ -87,6 +87,13 @@ export const ShopPage: React.FC = () => {
     if (selectedCondition && p.condition !== selectedCondition) return false;
     if (p.price < priceRange[0] || p.price > priceRange[1]) return false;
     if (inStockOnly && (!p.stock || p.stock === 0)) return false;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      const matchName = p.name?.toLowerCase().includes(q);
+      const matchDesc = p.description?.toLowerCase().includes(q);
+      const matchCat  = p.category?.toLowerCase().includes(q);
+      if (!matchName && !matchDesc && !matchCat) return false;
+    }
     return true;
   });
 

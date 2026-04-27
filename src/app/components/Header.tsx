@@ -228,14 +228,16 @@ export const Header = ({
             className="md:hidden bg-white border-t border-gray-100 overflow-hidden"
           >
             <div className="p-4 space-y-2">
-              <div className="relative mb-4">
+              <form onSubmit={(e) => { e.preventDefault(); handleSearchSubmit(); setIsMenuOpen(false); }} className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input 
-                  type="text" 
-                  placeholder="Rechercher..." 
+                <input
+                  type="text"
+                  placeholder="Rechercher..."
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-10 pr-4 text-sm"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
                 />
-              </div>
+              </form>
               {navItems.map((item) => (
                 <button
                   key={item.id}
