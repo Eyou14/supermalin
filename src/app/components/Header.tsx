@@ -182,18 +182,6 @@ export const Header = ({
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Bouton Debug Admin - visible seulement pour les admins */}
-          {isAdmin && (
-            <button 
-              onClick={() => navigate('/debug-admin')}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700 transition-all shadow-md"
-              title="Debug Admin"
-            >
-              <Zap size={14} />
-              DEBUG
-            </button>
-          )}
-          
           {/* Badge Admin */}
           {isAdmin && (
             <button 
@@ -288,20 +276,6 @@ export const Header = ({
                 </button>
               ))}
               <div className="pt-2 mt-2 border-t border-gray-100">
-                {/* Bouton Debug Admin - Mobile - visible seulement pour les admins */}
-                {isAdmin && (
-                  <button
-                    onClick={() => {
-                      navigate('/debug-admin');
-                      setIsMenuOpen(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 mb-2"
-                  >
-                    <Zap size={18} />
-                    Debug Admin
-                  </button>
-                )}
-                
                 <button
                   onClick={() => {
                     handleUserClick();
