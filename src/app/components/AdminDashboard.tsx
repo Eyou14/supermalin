@@ -23,7 +23,11 @@ import {
   Phone,
   Calendar,
   Download,
-  Eye
+  Eye,
+  Truck,
+  Send,
+  Archive,
+  BadgeCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -67,7 +71,7 @@ interface TransactionData {
 }
 
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'inventory' | 'users' | 'transactions' | 'orders' | 'customization'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'inventory' | 'users' | 'transactions' | 'orders' | 'customization' | 'arrivals'>('requests');
   const [requests, setRequests] = useState<TradeRequest[]>([]);
   const [inventory, setInventory] = useState<Product[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -85,6 +89,92 @@ export const AdminDashboard = () => {
     bannerMessage2: '120 MacBook Pro M3',
   });
   const [isSavingSections, setIsSavingSections] = useState(false);
+
+  // ── Arrivages ──────────────────────────────────────────────────────────────
+  interface ArrivalLot {
+    id: string;
+    name: string;
+    description: string;
+    productCount: number;
+    date: string;
+    isActive: boolean;
+    publishedAt?: string;
+  }
+  const [arrivals, setArrivals] = useState<ArrivalLot[]>([]);
+  const [isArrivalsLoading, setIsArrivalsLoading] = useState(false);
+  const [isCreatingArrival, setIsCreatingArrival] = useState(false);
+  const [newArrivalForm, setNewArrivalForm] = useState({ name: '', description: '', productCount: '' });
+  const [showArrivalForm, setShowArrivalForm] = useState(false);
+
+  const loadArrivals = async () => {
+    setIsArrivalsLoading(true);
+    try {
+      const res = await fetch(`${API_URL}/arrivals`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      const data = await res.json();
+      setArrivals(Array.isArray(data) ? data : []);
+    } catch {
+      toast.error('Erreur chargement arrivages');
+    } finally {
+      setIsArrivalsLoading(false);
+    }
+  };
+
+  const createArrival = async () => {
+    if (!newArrivalForm.name.trim()) { toast.error('Le nom du lot est requis'); return; }
+    setIsCreatingArrival(true);
+    try {
+      const res = await fetch(`${API_URL}/arrivals`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${publicAnonKey}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newArrivalForm.name,
+          description: newArrivalForm.description,
+          productCount: Number(newArrivalForm.productCount) || 0,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast.success('Lot créé avec succès');
+      setNewArrivalForm({ name: '', description: '', productCount: '' });
+      setShowArrivalForm(false);
+      loadArrivals();
+    } catch {
+      toast.error('Erreur lors de la création');
+    } finally {
+      setIsCreatingArrival(false);
+    }
+  };
+
+  const publishArrival = async (id: string) => {
+    try {
+      const res = await fetch(`${API_URL}/arrivals/${id}/publish`, {
+        method: 'PUT',
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      if (!res.ok) throw new Error();
+      toast.success('Lot publié ! La bannière a été mise à jour automatiquement.');
+      loadArrivals();
+      loadSectionsConfig();
+    } catch {
+      toast.error('Erreur lors de la publication');
+    }
+  };
+
+  const deleteArrival = async (id: string) => {
+    if (!confirm('Supprimer ce lot ?')) return;
+    try {
+      await fetch(`${API_URL}/arrivals/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      toast.success('Lot supprimé');
+      loadArrivals();
+    } catch {
+      toast.error('Erreur lors de la suppression');
+    }
+  };
+  // ──────────────────────────────────────────────────────────────────────────
 
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -233,12 +323,16 @@ export const AdminDashboard = () => {
   };
 
   useEffect(() => {
+    if (activeTab === 'arrivals') {
+      loadArrivals();
+      return;
+    }
     fetchData();
     if (activeTab === 'customization') loadSectionsConfig();
   }, [activeTab]);
 
   const fetchData = async () => {
-    if (activeTab === 'customization') return;
+    if (activeTab === 'customization' || activeTab === 'arrivals') return;
     setIsLoading(true);
     try {
       let endpoint = '';
@@ -344,6 +438,7 @@ export const AdminDashboard = () => {
           {[
             { id: 'requests', label: 'Demandes', icon: Inbox },
             { id: 'inventory', label: 'Inventaire', icon: Package },
+            { id: 'arrivals', label: 'Arrivages', icon: Truck },
             { id: 'orders', label: 'Commandes', icon: LayoutDashboard },
             { id: 'users', label: 'Utilisateurs', icon: Users },
             { id: 'transactions', label: 'Transactions', icon: CreditCard },
@@ -383,6 +478,7 @@ export const AdminDashboard = () => {
               {activeTab === 'transactions' && 'Flux Financiers'}
               {activeTab === 'orders' && 'Gestion des Commandes'}
               {activeTab === 'customization' && 'Personnalisation du Site'}
+              {activeTab === 'arrivals' && 'Gestion des Arrivages'}
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -624,6 +720,148 @@ export const AdminDashboard = () => {
                   </button>
                 </div>
               </div>
+            </div>
+          ) : activeTab === 'arrivals' ? (
+            <div className="max-w-3xl space-y-6">
+              {/* Info banner */}
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl px-6 py-4 flex items-start gap-3">
+                <Truck size={20} className="text-blue-600 shrink-0 mt-0.5" />
+                <p className="text-sm text-blue-700">
+                  Créez un lot d'arrivage et publiez-le pour mettre à jour automatiquement les messages de la bannière d'accueil.
+                </p>
+              </div>
+
+              {/* Bouton nouveau lot */}
+              {!showArrivalForm ? (
+                <button
+                  onClick={() => setShowArrivalForm(true)}
+                  className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-orange-700 transition-all"
+                >
+                  <Plus size={18} /> Nouveau lot d'arrivage
+                </button>
+              ) : (
+                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-4">
+                  <h3 className="font-black text-gray-900">Nouveau lot</h3>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Nom du lot *</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: 50 MacBook Pro M3 Max"
+                        value={newArrivalForm.name}
+                        onChange={(e) => setNewArrivalForm(p => ({ ...p, name: e.target.value }))}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Nombre de produits</label>
+                      <input
+                        type="number"
+                        min="0"
+                        placeholder="Ex: 50"
+                        value={newArrivalForm.productCount}
+                        onChange={(e) => setNewArrivalForm(p => ({ ...p, productCount: e.target.value }))}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Description (optionnel)</label>
+                      <input
+                        type="text"
+                        placeholder="Ex: Reconditionné grade A, garantie 12 mois"
+                        value={newArrivalForm.description}
+                        onChange={(e) => setNewArrivalForm(p => ({ ...p, description: e.target.value }))}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={createArrival}
+                      disabled={isCreatingArrival}
+                      className="bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-orange-700 transition-all disabled:opacity-50"
+                    >
+                      {isCreatingArrival ? 'Création...' : 'Créer le lot'}
+                    </button>
+                    <button
+                      onClick={() => { setShowArrivalForm(false); setNewArrivalForm({ name: '', description: '', productCount: '' }); }}
+                      className="bg-gray-100 text-gray-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-200 transition-all"
+                    >
+                      Annuler
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Liste des lots */}
+              {isArrivalsLoading ? (
+                <div className="flex justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-600" />
+                </div>
+              ) : arrivals.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <Truck size={40} className="mx-auto mb-3 opacity-30" />
+                  <p className="text-sm font-medium">Aucun lot créé pour l'instant</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {arrivals.map((lot) => (
+                    <div
+                      key={lot.id}
+                      className={`bg-white rounded-3xl border shadow-sm p-6 flex items-center justify-between gap-4 ${lot.isActive ? 'border-orange-300 ring-2 ring-orange-500/20' : 'border-gray-100'}`}
+                    >
+                      <div className="flex items-start gap-4">
+                        <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${lot.isActive ? 'bg-orange-100 text-orange-600' : 'bg-gray-100 text-gray-500'}`}>
+                          <Truck size={22} />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-black text-gray-900">{lot.name}</h4>
+                            {lot.isActive && (
+                              <span className="inline-flex items-center gap-1 bg-green-100 text-green-700 px-2 py-0.5 rounded-full text-[10px] font-black uppercase">
+                                <BadgeCheck size={11} /> Actif
+                              </span>
+                            )}
+                          </div>
+                          {lot.description && <p className="text-xs text-gray-500 mb-1">{lot.description}</p>}
+                          <div className="flex items-center gap-3 text-xs text-gray-400">
+                            <span className="font-medium text-gray-600">{lot.productCount} produits</span>
+                            <span>•</span>
+                            <span>{new Date(lot.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                            {lot.publishedAt && (
+                              <>
+                                <span>•</span>
+                                <span>Publié le {new Date(lot.publishedAt).toLocaleDateString('fr-FR')}</span>
+                              </>
+                            )}
+                          </div>
+                          {lot.isActive && (
+                            <div className="mt-2 text-[11px] text-orange-600 font-semibold bg-orange-50 inline-block px-2 py-0.5 rounded-lg">
+                              Bannière → "Derniers arrivages : +{lot.productCount} produits cette semaine" · "{lot.name}"
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {!lot.isActive && (
+                          <button
+                            onClick={() => publishArrival(lot.id)}
+                            className="flex items-center gap-1.5 bg-orange-600 text-white px-4 py-2 rounded-xl font-bold text-xs hover:bg-orange-700 transition-all"
+                          >
+                            <Send size={14} /> Publier
+                          </button>
+                        )}
+                        <button
+                          onClick={() => deleteArrival(lot.id)}
+                          className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           ) : activeTab === 'requests' ? (
             <div className="space-y-4">

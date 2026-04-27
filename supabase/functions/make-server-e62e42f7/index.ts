@@ -740,6 +740,94 @@ router.post("/signup", async (c) => {
     }
   });
 
+  // ── Arrivages (lots management) ─────────────────────────────────────────────
+
+  router.get("/arrivals", async (c) => {
+    try {
+      const arrivals = (await kv.get("arrivals:list")) || [];
+      return c.json(arrivals);
+    } catch (e) {
+      console.error("Error fetching arrivals:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  router.post("/arrivals", async (c) => {
+    try {
+      const body = await c.req.json();
+      const arrivals: any[] = (await kv.get("arrivals:list")) || [];
+      const newArrival = {
+        id: crypto.randomUUID(),
+        name: body.name || "Nouveau lot",
+        description: body.description || "",
+        productCount: Number(body.productCount) || 0,
+        date: new Date().toISOString(),
+        isActive: false,
+      };
+      arrivals.unshift(newArrival);
+      await kv.set("arrivals:list", arrivals);
+      return c.json(newArrival, 201);
+    } catch (e) {
+      console.error("Error creating arrival:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  router.put("/arrivals/:id/publish", async (c) => {
+    try {
+      const id = c.req.param("id");
+      const arrivals: any[] = (await kv.get("arrivals:list")) || [];
+      const idx = arrivals.findIndex((a) => a.id === id);
+      if (idx === -1) return c.json({ error: "Not found" }, 404);
+      // Désactiver tous les lots puis activer celui-ci
+      arrivals.forEach((a) => (a.isActive = false));
+      arrivals[idx].isActive = true;
+      arrivals[idx].publishedAt = new Date().toISOString();
+      await kv.set("arrivals:list", arrivals);
+      // Mettre à jour automatiquement les messages de la bannière
+      const arrival = arrivals[idx];
+      const config: any = (await kv.get("sections:config")) || {};
+      config.bannerMessage1 = `Derniers arrivages : +${arrival.productCount} produits cette semaine`;
+      config.bannerMessage2 = arrival.name;
+      await kv.set("sections:config", config);
+      return c.json({ success: true, arrival, bannerUpdated: true });
+    } catch (e) {
+      console.error("Error publishing arrival:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  router.put("/arrivals/:id", async (c) => {
+    try {
+      const id = c.req.param("id");
+      const body = await c.req.json();
+      const arrivals: any[] = (await kv.get("arrivals:list")) || [];
+      const idx = arrivals.findIndex((a) => a.id === id);
+      if (idx === -1) return c.json({ error: "Not found" }, 404);
+      arrivals[idx] = { ...arrivals[idx], ...body };
+      await kv.set("arrivals:list", arrivals);
+      return c.json(arrivals[idx]);
+    } catch (e) {
+      console.error("Error updating arrival:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  router.delete("/arrivals/:id", async (c) => {
+    try {
+      const id = c.req.param("id");
+      let arrivals: any[] = (await kv.get("arrivals:list")) || [];
+      arrivals = arrivals.filter((a) => a.id !== id);
+      await kv.set("arrivals:list", arrivals);
+      return c.json({ success: true });
+    } catch (e) {
+      console.error("Error deleting arrival:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // ── Sections Configuration ───────────────────────────────────────────────────
+
   // Sections Configuration
   router.get("/sections", async (c) => {
     try {
