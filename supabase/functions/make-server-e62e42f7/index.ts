@@ -96,12 +96,25 @@ const setupRoutes = (router: Hono) => {
     });
   });
 
+  // Helper: map Supabase row to frontend Product shape
+  const toProduct = (row: any) => ({
+    ...row,
+    name: row.title,
+    originalPrice: row.original_price ?? undefined,
+    image: row.image_url ?? undefined,
+  });
+
   // Products
   router.get("/products", async (c) => {
     try {
-      const products = await kv.getByPrefix("product:");
-      return c.json(products);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return c.json((data || []).map(toProduct));
     } catch (e) {
+      console.error("Error fetching products:", e);
       return c.json([]);
     }
   });
@@ -109,16 +122,15 @@ const setupRoutes = (router: Hono) => {
   // Search products
   router.get("/products/search", async (c) => {
     try {
-      const query = c.req.query('q')?.toLowerCase() || '';
+      const query = c.req.query('q') || '';
       if (!query) return c.json([]);
-      
-      const products = await kv.getByPrefix("product:");
-      const filtered = products.filter((p: any) => {
-        const searchText = `${p.name} ${p.description || ''} ${p.category || ''} ${p.tags?.join(' ') || ''}`.toLowerCase();
-        return searchText.includes(query);
-      });
-      
-      return c.json(filtered);
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
+        .eq('is_active', true);
+      if (error) throw error;
+      return c.json((data || []).map(toProduct));
     } catch (e) {
       console.error("Search error:", e);
       return c.json([]);
@@ -128,27 +140,65 @@ const setupRoutes = (router: Hono) => {
   router.post("/products", async (c) => {
     try {
       const p = await c.req.json();
-      p.id = p.id || crypto.randomUUID();
-      await kv.set(`product:${p.id}`, p);
-      return c.json(p);
+      const id = p.id || crypto.randomUUID();
+      const slugify = (s: string) => s.toLowerCase()
+        .replace(/[àáâãäå]/g,'a').replace(/[èéêë]/g,'e')
+        .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+        .replace(/[ùúûü]/g,'u').replace(/[ç]/g,'c')
+        .replace(/[^a-z0-9]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,80);
+      const row = {
+        id,
+        title:          p.title || p.name,
+        slug:           p.slug  || slugify(p.title || p.name || id),
+        description:    p.description   || '',
+        category:       p.category,
+        brand:          p.brand         || '',
+        condition:      p.condition,
+        price:          p.price,
+        original_price: p.originalPrice ?? p.original_price ?? null,
+        stock:          p.stock         ?? 0,
+        is_active:      p.is_active     ?? true,
+        is_new_arrival: p.is_new_arrival ?? false,
+        is_featured:    p.is_featured   ?? false,
+        image_url:      p.image_url     || p.image || null,
+        images:         p.images        || [],
+        sku:            p.sku           || null,
+      };
+      const { data, error } = await supabase.from('products').insert(row).select().single();
+      if (error) throw error;
+      return c.json(toProduct(data));
     } catch (e) {
-      return c.json({ error: e.message }, 400);
+      return c.json({ error: (e as any).message }, 400);
     }
   });
 
   router.put("/products/:id", async (c) => {
     const id = c.req.param('id');
     const updates = await c.req.json();
-    const existing = await kv.get(`product:${id}`);
-    if (!existing) return c.json({ error: "Not found" }, 404);
-    const updated = { ...existing, ...updates, id };
-    await kv.set(`product:${id}`, updated);
-    return c.json(updated);
+    const patch: any = { updated_at: new Date().toISOString() };
+    if (updates.title  || updates.name)       patch.title          = updates.title || updates.name;
+    if (updates.description  !== undefined)   patch.description    = updates.description;
+    if (updates.category)                     patch.category       = updates.category;
+    if (updates.price        !== undefined)   patch.price          = updates.price;
+    if (updates.original_price !== undefined) patch.original_price = updates.original_price;
+    if (updates.originalPrice  !== undefined) patch.original_price = updates.originalPrice;
+    if (updates.stock        !== undefined)   patch.stock          = updates.stock;
+    if (updates.condition)                    patch.condition      = updates.condition;
+    if (updates.is_active    !== undefined)   patch.is_active      = updates.is_active;
+    if (updates.is_featured  !== undefined)   patch.is_featured    = updates.is_featured;
+    if (updates.is_new_arrival !== undefined) patch.is_new_arrival = updates.is_new_arrival;
+    if (updates.image_url || updates.image)   patch.image_url      = updates.image_url || updates.image;
+    if (updates.images)                       patch.images         = updates.images;
+    if (updates.sku)                          patch.sku            = updates.sku;
+    const { data, error } = await supabase.from('products').update(patch).eq('id', id).select().single();
+    if (error) return c.json({ error: error.message }, 404);
+    return c.json(toProduct(data));
   });
 
   router.delete("/products/:id", async (c) => {
     const id = c.req.param('id');
-    await kv.del(`product:${id}`);
+    const { error } = await supabase.from('products').delete().eq('id', id);
+    if (error) return c.json({ error: error.message }, 500);
     return c.json({ success: true });
   });
 
@@ -375,11 +425,19 @@ const setupRoutes = (router: Hono) => {
       // Decrease stock for each item in the order
       if (data.items && Array.isArray(data.items)) {
         for (const item of data.items) {
-          const product = await kv.get(`product:${item.id}`);
-          if (product && product.stock) {
-            product.stock = Math.max(0, (product.stock || 0) - 1);
-            await kv.set(`product:${item.id}`, product);
-            console.log(`Stock decreased for product ${item.id}: ${product.stock} remaining`);
+          const { data: prod } = await supabase
+            .from('products')
+            .select('stock')
+            .eq('id', item.id)
+            .single();
+          if (prod && prod.stock > 0) {
+            const newStock = Math.max(0, prod.stock - 1);
+            await supabase.from('products').update({
+              stock: newStock,
+              is_active: newStock > 0,
+              updated_at: new Date().toISOString()
+            }).eq('id', item.id);
+            console.log(`Stock decreased for product ${item.id}: ${newStock} remaining`);
           }
         }
       }
@@ -617,47 +675,62 @@ router.post("/signup", async (c) => {
         return c.json({ error: "Champs requis manquants" }, 400);
       }
 
-      if (RESEND_API_KEY) {
-        await resend.emails.send({
-          from: 'SuperMalin <contact@supermalin.fr>',
-          to: ['contact@supermalin.fr'],
-          replyTo: email,
-          subject: `[Contact] ${subject || 'Nouveau message'} - ${name}`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #f97316, #fb923c); padding: 24px; border-radius: 12px 12px 0 0;">
-                <h2 style="color: white; margin: 0;">💬 Nouveau message de contact</h2>
-              </div>
-              <div style="background: #fff; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-                <p><strong>Nom :</strong> ${name}</p>
-                <p><strong>Email :</strong> <a href="mailto:${email}">${email}</a></p>
-                <p><strong>Sujet :</strong> ${subject || 'Non précisé'}</p>
-                <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
-                <p><strong>Message :</strong></p>
-                <p style="white-space: pre-wrap; color: #374151;">${message}</p>
-              </div>
-            </div>
-          `,
-        });
+      if (!RESEND_API_KEY) {
+        console.error("RESEND_API_KEY is not configured");
+        return c.json({ error: "Service email non configuré" }, 500);
+      }
 
-        // Confirmation to sender
-        await resend.emails.send({
-          from: 'SuperMalin <contact@supermalin.fr>',
-          to: [email],
-          subject: 'Nous avons bien reçu votre message - SuperMalin',
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-              <div style="background: linear-gradient(135deg, #f97316, #fb923c); padding: 24px; border-radius: 12px 12px 0 0;">
-                <h2 style="color: white; margin: 0;">✅ Message bien reçu !</h2>
-              </div>
-              <div style="background: #fff; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
-                <p>Bonjour <strong>${name}</strong>,</p>
-                <p>Nous avons bien reçu votre message et nous vous répondrons dans les <strong>24 heures</strong>.</p>
-                <p style="color: #6b7280; font-size: 14px;">L'équipe SuperMalin 🧡</p>
-              </div>
+      // Send notification to admin
+      const { data: adminData, error: adminError } = await resend.emails.send({
+        from: 'SuperMalin <contact@supermalin.fr>',
+        to: ['pierresimoneyou@gmail.com'],
+        replyTo: email,
+        subject: `[Contact] ${subject || 'Nouveau message'} - ${name}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #f97316, #fb923c); padding: 24px; border-radius: 12px 12px 0 0;">
+              <h2 style="color: white; margin: 0;">💬 Nouveau message de contact</h2>
             </div>
-          `,
-        });
+            <div style="background: #fff; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+              <p><strong>Nom :</strong> ${name}</p>
+              <p><strong>Email :</strong> <a href="mailto:${email}">${email}</a></p>
+              <p><strong>Sujet :</strong> ${subject || 'Non précisé'}</p>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;" />
+              <p><strong>Message :</strong></p>
+              <p style="white-space: pre-wrap; color: #374151;">${message}</p>
+            </div>
+          </div>
+        `,
+      });
+
+      if (adminError) {
+        console.error("Resend admin email error:", JSON.stringify(adminError));
+        return c.json({ error: `Erreur envoi email: ${adminError.message}` }, 500);
+      }
+
+      console.log("Admin notification sent:", adminData?.id);
+
+      // Confirmation to sender
+      const { error: confirmError } = await resend.emails.send({
+        from: 'SuperMalin <contact@supermalin.fr>',
+        to: [email],
+        subject: 'Nous avons bien reçu votre message - SuperMalin',
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #f97316, #fb923c); padding: 24px; border-radius: 12px 12px 0 0;">
+              <h2 style="color: white; margin: 0;">✅ Message bien reçu !</h2>
+            </div>
+            <div style="background: #fff; padding: 24px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+              <p>Bonjour <strong>${name}</strong>,</p>
+              <p>Nous avons bien reçu votre message et nous vous répondrons dans les <strong>24 heures</strong>.</p>
+              <p style="color: #6b7280; font-size: 14px;">L'équipe SuperMalin 🧡</p>
+            </div>
+          </div>
+        `,
+      });
+
+      if (confirmError) {
+        console.warn("Confirmation email failed (non-blocking):", JSON.stringify(confirmError));
       }
 
       return c.json({ success: true });
