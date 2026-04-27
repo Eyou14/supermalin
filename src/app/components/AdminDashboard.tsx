@@ -67,10 +67,11 @@ interface TransactionData {
 }
 
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'inventory' | 'users' | 'transactions' | 'orders'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'inventory' | 'users' | 'transactions' | 'orders' | 'customization'>('requests');
   const [requests, setRequests] = useState<TradeRequest[]>([]);
   const [inventory, setInventory] = useState<Product[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [editSelectedFiles, setEditSelectedFiles] = useState<File[]>([]);
   const [users, setUsers] = useState<UserProfileData[]>([]);
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -79,6 +80,11 @@ export const AdminDashboard = () => {
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sectionsConfig, setSectionsConfig] = useState({
+    bannerMessage1: 'Derniers arrivages : +250 produits cette semaine',
+    bannerMessage2: '120 MacBook Pro M3',
+  });
+  const [isSavingSections, setIsSavingSections] = useState(false);
 
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -139,11 +145,100 @@ export const AdminDashboard = () => {
     }
   };
 
+  const handleEditProduct = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!editingProduct) return;
+    try {
+      const formData = new FormData(e.currentTarget);
+      let imageUrl = editingProduct.image_url || editingProduct.image || null;
+
+      if (editSelectedFiles.length > 0) {
+        const file = editSelectedFiles[0];
+        const fileName = `${Date.now()}-${file.name.replaceAll(' ', '-')}`;
+        const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(fileName, file);
+        if (error) throw new Error(`Échec upload: ${error.message}`);
+        const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
+        imageUrl = data.publicUrl;
+      }
+
+      const updates = {
+        name: formData.get('name') as string,
+        price: parseFloat(formData.get('price') as string),
+        originalPrice: formData.get('originalPrice') ? parseFloat(formData.get('originalPrice') as string) : undefined,
+        description: formData.get('description') as string,
+        category: formData.get('category') as string,
+        condition: formData.get('condition') as string,
+        stock: parseInt(formData.get('stock') as string) || 0,
+        is_active: parseInt(formData.get('stock') as string) > 0,
+        is_featured: (formData.get('isFeatured') as string) === 'on',
+        is_new_arrival: (formData.get('isNewArrival') as string) === 'on',
+        ...(imageUrl ? { image_url: imageUrl } : {}),
+      };
+
+      const response = await fetch(`${API_URL}/products/${editingProduct.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${publicAnonKey}`,
+        },
+        body: JSON.stringify(updates),
+      });
+
+      if (!response.ok) throw new Error();
+      toast.success('Produit mis à jour ✅');
+      setEditingProduct(null);
+      setEditSelectedFiles([]);
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      toast.error('Erreur lors de la mise à jour');
+    }
+  };
+
+  const loadSectionsConfig = async () => {
+    try {
+      const response = await fetch(`${API_URL}/sections`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      if (response.ok) {
+        const config = await response.json();
+        setSectionsConfig({
+          bannerMessage1: config.bannerMessage1 || sectionsConfig.bannerMessage1,
+          bannerMessage2: config.bannerMessage2 || sectionsConfig.bannerMessage2,
+        });
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const saveSectionsConfig = async () => {
+    setIsSavingSections(true);
+    try {
+      const response = await fetch(`${API_URL}/sections`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${publicAnonKey}`,
+        },
+        body: JSON.stringify(sectionsConfig),
+      });
+      if (!response.ok) throw new Error();
+      toast.success('Messages de la bannière enregistrés ✅');
+    } catch (e) {
+      toast.error('Erreur lors de la sauvegarde');
+    } finally {
+      setIsSavingSections(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
+    if (activeTab === 'customization') loadSectionsConfig();
   }, [activeTab]);
 
   const fetchData = async () => {
+    if (activeTab === 'customization') return;
     setIsLoading(true);
     try {
       let endpoint = '';
@@ -252,6 +347,7 @@ export const AdminDashboard = () => {
             { id: 'orders', label: 'Commandes', icon: LayoutDashboard },
             { id: 'users', label: 'Utilisateurs', icon: Users },
             { id: 'transactions', label: 'Transactions', icon: CreditCard },
+            { id: 'customization', label: 'Personnalisation', icon: Tag },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -286,6 +382,7 @@ export const AdminDashboard = () => {
               {activeTab === 'users' && 'Gestion des Utilisateurs'}
               {activeTab === 'transactions' && 'Flux Financiers'}
               {activeTab === 'orders' && 'Gestion des Commandes'}
+              {activeTab === 'customization' && 'Personnalisation du Site'}
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -492,6 +589,42 @@ export const AdminDashboard = () => {
                 </tbody>
               </table>
             </div>
+          ) : activeTab === 'customization' ? (
+            <div className="max-w-2xl space-y-6">
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
+                <h2 className="text-lg font-black text-gray-900 mb-2">Bannière d'accueil</h2>
+                <p className="text-sm text-gray-400 mb-6">Ces messages apparaissent sur la page d'accueil dans la section héro.</p>
+                <div className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-gray-400">Message principal (badge orange)</label>
+                    <input
+                      type="text"
+                      value={sectionsConfig.bannerMessage1}
+                      onChange={(e) => setSectionsConfig(prev => ({ ...prev, bannerMessage1: e.target.value }))}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
+                      placeholder="Ex: Derniers arrivages : +250 produits cette semaine"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black uppercase text-gray-400">Message secondaire (bulle flottante)</label>
+                    <input
+                      type="text"
+                      value={sectionsConfig.bannerMessage2}
+                      onChange={(e) => setSectionsConfig(prev => ({ ...prev, bannerMessage2: e.target.value }))}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
+                      placeholder="Ex: 120 MacBook Pro M3"
+                    />
+                  </div>
+                  <button
+                    onClick={saveSectionsConfig}
+                    disabled={isSavingSections}
+                    className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold text-sm hover:bg-orange-700 transition-all disabled:opacity-50"
+                  >
+                    {isSavingSections ? 'Sauvegarde...' : 'Enregistrer les messages'}
+                  </button>
+                </div>
+              </div>
+            </div>
           ) : activeTab === 'requests' ? (
             <div className="space-y-4">
               {requests.map((req) => (
@@ -575,12 +708,20 @@ export const AdminDashboard = () => {
                             {(item.type === 'auction' ? item.currentBid || item.price : item.price)?.toLocaleString()}€
                           </td>
                           <td className="px-6 py-4 text-right">
-                            <button
-                              onClick={() => deleteProduct(item.id)}
-                              className="p-2 text-gray-400 hover:text-red-600 transition-all"
-                            >
-                              <Trash2 size={18} />
-                            </button>
+                            <div className="flex items-center justify-end gap-1">
+                              <button
+                                onClick={() => setEditingProduct(item)}
+                                className="p-2 text-gray-400 hover:text-blue-600 transition-all"
+                              >
+                                <Edit3 size={18} />
+                              </button>
+                              <button
+                                onClick={() => deleteProduct(item.id)}
+                                className="p-2 text-gray-400 hover:text-red-600 transition-all"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -706,6 +847,148 @@ export const AdminDashboard = () => {
                   className="col-span-2 bg-orange-600 text-white py-4 rounded-xl font-bold mt-4 hover:bg-orange-700 transition-all"
                 >
                   Publier l'article
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {editingProduct && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setEditingProduct(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative bg-white w-full max-w-lg rounded-[2.5rem] p-10 shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              <button onClick={() => setEditingProduct(null)} className="absolute top-6 right-6 p-2 text-gray-400 hover:text-gray-900">
+                <X size={20} />
+              </button>
+              <h2 className="text-2xl font-black mb-1">Modifier le produit</h2>
+              <p className="text-sm text-gray-400 mb-6">{editingProduct.title || editingProduct.name}</p>
+              <form onSubmit={handleEditProduct} className="grid grid-cols-2 gap-4">
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Nom du produit</label>
+                  <input
+                    name="name"
+                    required
+                    defaultValue={editingProduct.title || editingProduct.name || ''}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Prix de vente (€)</label>
+                  <input
+                    name="price"
+                    type="number"
+                    step="0.01"
+                    required
+                    defaultValue={editingProduct.price || ''}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Prix barré (€)</label>
+                  <input
+                    name="originalPrice"
+                    type="number"
+                    step="0.01"
+                    defaultValue={(editingProduct as any).original_price || (editingProduct as any).originalPrice || ''}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                    placeholder="Optionnel"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Stock</label>
+                  <input
+                    name="stock"
+                    type="number"
+                    defaultValue={editingProduct.stock ?? 1}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Catégorie</label>
+                  <select
+                    name="category"
+                    defaultValue={editingProduct.category || 'telephonie'}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                  >
+                    <option value="telephonie">Téléphonie</option>
+                    <option value="informatique">Informatique</option>
+                    <option value="audio-video">Audio / Vidéo</option>
+                    <option value="gaming">Gaming</option>
+                    <option value="maison">Maison</option>
+                    <option value="cuisine">Cuisine</option>
+                    <option value="vetements">Vêtements</option>
+                    <option value="cosmetiques">Cosmétiques</option>
+                    <option value="accessoires">Accessoires</option>
+                    <option value="divers">Divers Arrivages</option>
+                  </select>
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">État</label>
+                  <select
+                    name="condition"
+                    defaultValue={editingProduct.condition || 'Très bon état'}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                  >
+                    <option value="Neuf scellé">Neuf scellé</option>
+                    <option value="Neuf ouvert">Neuf ouvert</option>
+                    <option value="Comme neuf">Comme neuf</option>
+                    <option value="Très bon état">Très bon état</option>
+                    <option value="Bon état">Bon état</option>
+                    <option value="Correct">Correct</option>
+                    <option value="Pour pièces">Pour pièces</option>
+                  </select>
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Description</label>
+                  <textarea
+                    name="description"
+                    rows={3}
+                    defaultValue={editingProduct.description || ''}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none resize-none"
+                  />
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Remplacer l'image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => setEditSelectedFiles(Array.from(e.target.files || []))}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm"
+                  />
+                  {(editingProduct.image_url || editingProduct.image) && (
+                    <img
+                      src={editingProduct.image_url || editingProduct.image}
+                      className="mt-2 w-16 h-16 rounded-xl object-cover border border-gray-100"
+                      alt="Image actuelle"
+                    />
+                  )}
+                </div>
+                <div className="col-span-1 flex items-center gap-2">
+                  <input type="checkbox" name="isNewArrival" id="edit-isNewArrival" defaultChecked={(editingProduct as any).is_new_arrival} />
+                  <label htmlFor="edit-isNewArrival" className="text-sm font-medium">Nouvel arrivage</label>
+                </div>
+                <div className="col-span-1 flex items-center gap-2">
+                  <input type="checkbox" name="isFeatured" id="edit-isFeatured" defaultChecked={(editingProduct as any).is_featured} />
+                  <label htmlFor="edit-isFeatured" className="text-sm font-medium">Mis en avant</label>
+                </div>
+                <button
+                  type="submit"
+                  className="col-span-2 bg-orange-600 text-white py-4 rounded-xl font-bold mt-4 hover:bg-orange-700 transition-all"
+                >
+                  Enregistrer les modifications
                 </button>
               </form>
             </motion.div>
