@@ -76,6 +76,7 @@ export const AdminDashboard = () => {
   const [inventory, setInventory] = useState<Product[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [editSelectedFiles, setEditSelectedFiles] = useState<File[]>([]);
+  const [editExistingImages, setEditExistingImages] = useState<string[]>([]);
   const [users, setUsers] = useState<UserProfileData[]>([]);
   const [transactions, setTransactions] = useState<TransactionData[]>([]);
   const [orders, setOrders] = useState<any[]>([]);
@@ -240,16 +241,20 @@ export const AdminDashboard = () => {
     if (!editingProduct) return;
     try {
       const formData = new FormData(e.currentTarget);
-      let imageUrl = editingProduct.image_url || editingProduct.image || null;
 
-      if (editSelectedFiles.length > 0) {
-        const file = editSelectedFiles[0];
-        const fileName = `${Date.now()}-${file.name.replaceAll(' ', '-')}`;
+      // Upload new files
+      const newImageUrls: string[] = [];
+      for (const file of editSelectedFiles) {
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name.replaceAll(' ', '-')}`;
         const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(fileName, file);
         if (error) throw new Error(`Échec upload: ${error.message}`);
         const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
-        imageUrl = data.publicUrl;
+        newImageUrls.push(data.publicUrl);
       }
+
+      // Merge: kept existing images + new uploads
+      const allImages = [...editExistingImages, ...newImageUrls];
+      const imageUrl = allImages[0] || editingProduct.image_url || editingProduct.image || null;
 
       const updates = {
         name: formData.get('name') as string,
@@ -263,6 +268,7 @@ export const AdminDashboard = () => {
         is_featured: (formData.get('isFeatured') as string) === 'on',
         is_new_arrival: (formData.get('isNewArrival') as string) === 'on',
         ...(imageUrl ? { image_url: imageUrl } : {}),
+        images: allImages,
       };
 
       const response = await fetch(`${API_URL}/products/${editingProduct.id}`, {
@@ -278,6 +284,7 @@ export const AdminDashboard = () => {
       toast.success('Produit mis à jour ✅');
       setEditingProduct(null);
       setEditSelectedFiles([]);
+      setEditExistingImages([]);
       fetchData();
     } catch (e) {
       console.error(e);
@@ -948,7 +955,11 @@ export const AdminDashboard = () => {
                           <td className="px-6 py-4 text-right">
                             <div className="flex items-center justify-end gap-1">
                               <button
-                                onClick={() => setEditingProduct(item)}
+                                onClick={() => {
+                                  setEditingProduct(item);
+                                  setEditExistingImages(item.images && item.images.length > 0 ? item.images : (item.image_url || item.image ? [item.image_url || item.image] : []));
+                                  setEditSelectedFiles([]);
+                                }}
                                 className="p-2 text-gray-400 hover:text-blue-600 transition-all"
                               >
                                 <Edit3 size={18} />
@@ -1198,21 +1209,53 @@ export const AdminDashboard = () => {
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none resize-none"
                   />
                 </div>
-                <div className="col-span-2 space-y-1">
-                  <label className="text-[10px] font-black uppercase text-gray-400">Remplacer l'image</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => setEditSelectedFiles(Array.from(e.target.files || []))}
-                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm"
-                  />
-                  {(editingProduct.image_url || editingProduct.image) && (
-                    <img
-                      src={editingProduct.image_url || editingProduct.image}
-                      className="mt-2 w-16 h-16 rounded-xl object-cover border border-gray-100"
-                      alt="Image actuelle"
-                    />
+                <div className="col-span-2 space-y-2">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Photos du produit</label>
+                  {/* Existing images */}
+                  {editExistingImages.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {editExistingImages.map((url, idx) => (
+                        <div key={idx} className="relative group">
+                          <img src={url} className="w-16 h-16 rounded-xl object-cover border-2 border-gray-100" alt={`Photo ${idx + 1}`} />
+                          {idx === 0 && (
+                            <span className="absolute -top-1 -left-1 bg-orange-600 text-white text-[8px] font-black px-1 py-0.5 rounded-md">1ère</span>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => setEditExistingImages(prev => prev.filter((_, i) => i !== idx))}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >×</button>
+                        </div>
+                      ))}
+                    </div>
                   )}
+                  {/* New files preview */}
+                  {editSelectedFiles.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {editSelectedFiles.map((file, idx) => (
+                        <div key={idx} className="relative group">
+                          <img src={URL.createObjectURL(file)} className="w-16 h-16 rounded-xl object-cover border-2 border-blue-200" alt={`Nouveau ${idx + 1}`} />
+                          <span className="absolute -top-1 -left-1 bg-blue-600 text-white text-[8px] font-black px-1 py-0.5 rounded-md">New</span>
+                          <button
+                            type="button"
+                            onClick={() => setEditSelectedFiles(prev => prev.filter((_, i) => i !== idx))}
+                            className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white rounded-full text-xs flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <label className="flex items-center gap-2 cursor-pointer bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl px-4 py-3 hover:border-orange-400 transition-colors">
+                    <span className="text-xs text-gray-500">+ Ajouter des photos (plusieurs possibles)</span>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => setEditSelectedFiles(prev => [...prev, ...Array.from(e.target.files || [])])}
+                    />
+                  </label>
+                  <p className="text-[10px] text-gray-400">Survole une photo et clique × pour la supprimer. La 1ère photo est l'image principale.</p>
                 </div>
                 <div className="col-span-1 flex items-center gap-2">
                   <input type="checkbox" name="isNewArrival" id="edit-isNewArrival" defaultChecked={(editingProduct as any).is_new_arrival} />

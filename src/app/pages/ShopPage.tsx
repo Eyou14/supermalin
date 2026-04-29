@@ -4,7 +4,7 @@ import { ProductCard, Product } from '../components/ProductCard';
 import { MOCK_PRODUCTS } from '../mockData';
 import { AppContext } from '../layouts/RootLayout';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
-import { Filter, ChevronDown, X } from 'lucide-react';
+import { Filter, ChevronDown, X, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
@@ -161,18 +161,56 @@ export const ShopPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl font-black mb-2">Boutique</h1>
-          <p className="text-gray-600">{sortedProducts.length} produits disponibles</p>
+          <h1 className="text-3xl font-black mb-1">Boutique</h1>
+          <p className="text-gray-500 text-sm">
+            {searchQuery.trim()
+              ? <>{sortedProducts.length} résultat{sortedProducts.length !== 1 ? 's' : ''} pour <span className="font-bold text-gray-800">« {searchQuery} »</span></>
+              : <>{sortedProducts.length} produits disponibles</>
+            }
+          </p>
         </div>
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="flex items-center gap-2 bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-700 transition-all lg:hidden"
-        >
-          <Filter size={20} />
-          Filtres {activeFiltersCount > 0 && `(${activeFiltersCount})`}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Barre de recherche inline */}
+          <form
+            onSubmit={(e) => { e.preventDefault(); }}
+            className="relative"
+          >
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+            <input
+              type="text"
+              placeholder="Rechercher..."
+              value={searchQuery}
+              onChange={(e) => {
+                const val = e.target.value;
+                setSearchQuery(val);
+                if (val.trim()) {
+                  setSearchParams(prev => { const p = new URLSearchParams(prev); p.set('search', val); return p; });
+                } else {
+                  setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('search'); return p; });
+                }
+              }}
+              className="pl-9 pr-4 py-2.5 bg-white border-2 border-gray-200 rounded-xl text-sm focus:outline-none focus:border-orange-500 w-48 sm:w-56 transition-all"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => { setSearchQuery(''); setSearchParams(prev => { const p = new URLSearchParams(prev); p.delete('search'); return p; }); }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </form>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-2 bg-orange-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-orange-700 transition-all lg:hidden"
+          >
+            <Filter size={18} />
+            Filtres {activeFiltersCount > 0 && `(${activeFiltersCount})`}
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
