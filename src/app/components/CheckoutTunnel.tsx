@@ -34,7 +34,9 @@ interface CheckoutTunnelProps {
 }
 
 type Step = 'shipping' | 'payment' | 'confirmation';
-type ShippingMethod = 'colissimo' | 'chronopost';
+type ShippingMethod = 'mondial_relay' | 'colissimo' | 'chronopost' | 'retrait';
+
+const FREE_SHIPPING_THRESHOLD = 50; // Livraison gratuite dès 50€
 
 export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({ 
   cart, 
@@ -48,7 +50,7 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
   const elements = useElements();
   
   const [step, setStep] = useState<Step>('shipping');
-  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('colissimo');
+  const [shippingMethod, setShippingMethod] = useState<ShippingMethod>('mondial_relay');
   const [selectedRelay, setSelectedRelay] = useState<string | null>(null);
   const [useWallet, setUseWallet] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -63,20 +65,54 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
     { id: 'confirmation', label: 'Confirmation', icon: CheckCircle2 },
   ];
 
+  const isFreeShipping = Number(total) >= FREE_SHIPPING_THRESHOLD;
+  const amountToFreeShipping = Math.max(0, FREE_SHIPPING_THRESHOLD - Number(total));
+  const freeShippingProgress = Math.min(100, (Number(total) / FREE_SHIPPING_THRESHOLD) * 100);
+
   const shippingOptions = [
+    {
+      id: 'mondial_relay' as ShippingMethod,
+      name: 'Mondial Relay',
+      description: 'Point relais — 3 à 5 jours',
+      basePrice: 3.99,
+      price: isFreeShipping ? 0 : 3.99,
+      free: isFreeShipping,
+      tag: 'Économique',
+      tagColor: 'green',
+      icon: '📦',
+    },
     {
       id: 'colissimo' as ShippingMethod,
       name: 'Colissimo',
-      description: 'Domicile - 2 à 3 jours',
-      price: 5.90,
-      color: 'blue'
+      description: 'À domicile — 2 à 3 jours',
+      basePrice: 5.90,
+      price: isFreeShipping ? 0 : 5.90,
+      free: isFreeShipping,
+      tag: 'Populaire',
+      tagColor: 'blue',
+      icon: '🏠',
     },
     {
       id: 'chronopost' as ShippingMethod,
       name: 'Chronopost',
-      description: 'Express - 24h à 48h',
-      price: 12.90,
-      color: 'orange'
+      description: 'Express — livraison le lendemain',
+      basePrice: 9.90,
+      price: 9.90,
+      free: false,
+      tag: 'Express',
+      tagColor: 'orange',
+      icon: '⚡',
+    },
+    {
+      id: 'retrait' as ShippingMethod,
+      name: 'Retrait en main propre',
+      description: 'Sur rendez-vous — Acy-en-Multien (60)',
+      basePrice: 0,
+      price: 0,
+      free: true,
+      tag: 'Gratuit',
+      tagColor: 'gray',
+      icon: '🤝',
     },
   ];
 
@@ -131,7 +167,7 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
   const relayPoints = nearbyRelays.length > 0 ? nearbyRelays : generateRelayPoints('59000');
 
   const selectedShipping = shippingOptions.find(opt => opt.id === shippingMethod);
-  const shippingCost = selectedShipping?.price || 0;
+  const shippingCost = selectedShipping?.price ?? 0;
   
   // Ensure all values are valid numbers to prevent toFixed() errors
   const safeTotal = Number(total) || 0;
@@ -142,8 +178,16 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
 
   const handleNext = async () => {
     if (step === 'shipping') {
-      if (!address || !postalCode || !city) {
+      if (shippingMethod !== 'retrait' && (!postalCode || !city)) {
+        toast.error("Veuillez renseigner votre code postal et votre ville.");
+        return;
+      }
+      if (shippingMethod === 'colissimo' && !address) {
         toast.error("Veuillez renseigner votre adresse de livraison.");
+        return;
+      }
+      if (shippingMethod === 'mondial_relay' && !selectedRelay && !address) {
+        toast.error("Veuillez sélectionner un point relais.");
         return;
       }
       console.log('✅ Étape livraison validée, passage au paiement');
@@ -268,60 +312,162 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
         <div className="lg:col-span-8">
           <AnimatePresence mode="wait">
             {step === 'shipping' && (
-              <motion.div key="shipping" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
+              <motion.div key="shipping" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-5">
+
+                {/* ── Barre livraison gratuite ── */}
+                <div className={`rounded-2xl p-5 border ${isFreeShipping ? 'bg-green-50 border-green-200' : 'bg-orange-50 border-orange-100'}`}>
+                  {isFreeShipping ? (
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">🎉</span>
+                      <div>
+                        <p className="font-black text-green-800">Livraison offerte débloquée !</p>
+                        <p className="text-xs text-green-600">Profitez de la livraison gratuite sur vos modes standard.</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <p className="text-sm font-black text-gray-800">
+                          Plus que <span className="text-orange-600">{amountToFreeShipping.toFixed(2)}€</span> pour la livraison offerte !
+                        </p>
+                        <span className="text-xs font-bold text-orange-600">Dès {FREE_SHIPPING_THRESHOLD}€</span>
+                      </div>
+                      <div className="w-full bg-orange-100 rounded-full h-2.5 overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${freeShippingProgress}%` }}
+                          transition={{ duration: 0.8, ease: 'easeOut' }}
+                          className="h-full bg-gradient-to-r from-orange-400 to-orange-600 rounded-full"
+                        />
+                      </div>
+                      <p className="text-[10px] text-gray-400 mt-1.5">Livraison gratuite (Mondial Relay &amp; Colissimo) à partir de {FREE_SHIPPING_THRESHOLD}€ d'achats</p>
+                    </div>
+                  )}
+                </div>
+
+                {/* ── Options de livraison ── */}
                 <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
                   <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
-                    <MapPin className="text-orange-600" /> Livraison
+                    <MapPin className="text-orange-600" /> Mode de livraison
                   </h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <button
-                      onClick={() => setShippingMethod('colissimo')}
-                      className={`p-6 rounded-3xl border-2 transition-all text-left ${shippingMethod === 'colissimo' ? 'border-blue-600 bg-blue-50/30' : 'border-gray-100 hover:border-gray-200'}`}
-                    >
-                       <h3 className="font-bold text-gray-900">Colissimo</h3>
-                       <p className="text-xs text-gray-500">Domicile - 2 à 3 jours</p>
-                       <p className="mt-4 text-xs font-black text-gray-900 uppercase">+5.90€</p>
-                    </button>
-                    <button
-                      onClick={() => setShippingMethod('chronopost')}
-                      className={`p-6 rounded-3xl border-2 transition-all text-left ${shippingMethod === 'chronopost' ? 'border-orange-600 bg-orange-50/30' : 'border-gray-100 hover:border-gray-200'}`}
-                    >
-                       <h3 className="font-bold text-gray-900">Chronopost</h3>
-                       <p className="text-xs text-gray-500">Express - 24h à 48h</p>
-                       <p className="mt-4 text-xs font-black text-gray-900 uppercase">+12.90€</p>
-                    </button>
-                  </div>
-                  <div className="mt-6 space-y-3">
-                    <p className="text-sm font-bold text-gray-700 mb-3">📍 Adresse de livraison</p>
-                    <input
-                      type="text"
-                      value={address}
-                      onChange={(e) => setAddress(e.target.value)}
-                      placeholder="Numéro et nom de rue"
-                      className="w-full p-3 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none"
-                      required
-                    />
-                    <div className="grid grid-cols-2 gap-3">
-                      <input
-                        type="text"
-                        value={postalCode}
-                        onChange={(e) => setPostalCode(e.target.value)}
-                        placeholder="Code postal"
-                        className="p-3 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none"
-                        maxLength={5}
-                        required
-                      />
-                      <input
-                        type="text"
-                        value={city}
-                        onChange={(e) => setCity(e.target.value)}
-                        placeholder="Ville"
-                        className="p-3 rounded-lg border border-gray-300 focus:border-orange-600 focus:outline-none"
-                        required
-                      />
-                    </div>
+                  <div className="space-y-3">
+                    {shippingOptions.map((opt) => {
+                      const isSelected = shippingMethod === opt.id;
+                      const borderColor = isSelected
+                        ? opt.tagColor === 'green' ? 'border-green-500 bg-green-50/40'
+                        : opt.tagColor === 'blue' ? 'border-blue-500 bg-blue-50/40'
+                        : opt.tagColor === 'orange' ? 'border-orange-500 bg-orange-50/40'
+                        : 'border-gray-400 bg-gray-50/40'
+                        : 'border-gray-100 hover:border-gray-200';
+                      const tagStyle = opt.tagColor === 'green' ? 'bg-green-100 text-green-700'
+                        : opt.tagColor === 'blue' ? 'bg-blue-100 text-blue-700'
+                        : opt.tagColor === 'orange' ? 'bg-orange-100 text-orange-700'
+                        : 'bg-gray-100 text-gray-600';
+
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => setShippingMethod(opt.id)}
+                          className={`w-full p-4 rounded-2xl border-2 transition-all text-left flex items-center gap-4 ${borderColor}`}
+                        >
+                          <span className="text-2xl shrink-0">{opt.icon}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-gray-900 text-sm">{opt.name}</span>
+                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${tagStyle}`}>
+                                {opt.tag}
+                              </span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-0.5">{opt.description}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            {opt.free && opt.basePrice > 0 ? (
+                              <div>
+                                <p className="text-xs text-gray-400 line-through">{opt.basePrice.toFixed(2)}€</p>
+                                <p className="text-sm font-black text-green-600">GRATUIT</p>
+                              </div>
+                            ) : opt.price === 0 ? (
+                              <p className="text-sm font-black text-green-600">GRATUIT</p>
+                            ) : (
+                              <p className="text-sm font-black text-gray-900">+{opt.price.toFixed(2)}€</p>
+                            )}
+                          </div>
+                          <div className={`w-5 h-5 rounded-full border-2 shrink-0 flex items-center justify-center ${
+                            isSelected ? 'border-orange-600 bg-orange-600' : 'border-gray-300'
+                          }`}>
+                            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
+
+                {/* ── Adresse ── */}
+                {shippingMethod !== 'retrait' && (
+                  <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                    <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
+                      <MapPin className="text-gray-400" size={20} />
+                      {shippingMethod === 'mondial_relay' ? 'Adresse pour trouver les points relais' : 'Adresse de livraison'}
+                    </h2>
+                    <div className="space-y-3">
+                      {shippingMethod !== 'mondial_relay' && (
+                        <input
+                          type="text"
+                          value={address}
+                          onChange={(e) => setAddress(e.target.value)}
+                          placeholder="Numéro et nom de rue"
+                          className="w-full p-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none text-sm"
+                        />
+                      )}
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={postalCode}
+                          onChange={handlePostalCodeChange}
+                          placeholder="Code postal"
+                          className="p-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none text-sm"
+                          maxLength={5}
+                        />
+                        <input
+                          type="text"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          placeholder="Ville"
+                          className="p-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none text-sm"
+                        />
+                      </div>
+                      {shippingMethod === 'mondial_relay' && nearbyRelays.length > 0 && (
+                        <div className="mt-4 space-y-2">
+                          <p className="text-xs font-black uppercase text-gray-400 tracking-wider">Points relais proches</p>
+                          {relayPoints.slice(0, 4).map((relay: any) => (
+                            <button
+                              key={relay.id}
+                              onClick={() => { setSelectedRelay(relay.id); setAddress(relay.address); }}
+                              className={`w-full p-3 rounded-xl border text-left transition-all text-sm flex justify-between items-center ${selectedRelay === relay.id ? 'border-green-500 bg-green-50' : 'border-gray-100 hover:border-gray-200'}`}
+                            >
+                              <div>
+                                <p className="font-bold text-gray-900">{relay.name}</p>
+                                <p className="text-xs text-gray-500">{relay.address}</p>
+                              </div>
+                              <span className="text-xs text-gray-400 shrink-0 ml-2">{relay.distance}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {shippingMethod === 'retrait' && (
+                  <div className="bg-gray-50 rounded-2xl border border-gray-100 p-6 flex items-start gap-4">
+                    <span className="text-2xl">📍</span>
+                    <div>
+                      <p className="font-bold text-gray-900 mb-1">Retrait à Acy-en-Multien (60620)</p>
+                      <p className="text-sm text-gray-600">13 rue René Latour — Un rendez-vous sera convenu par email après confirmation de commande.</p>
+                    </div>
+                  </div>
+                )}
               </motion.div>
             )}
 
@@ -392,13 +538,22 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                   <span>{safeTotal.toFixed(2)}€</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-400">Livraison</span>
-                  <span>{shippingCost.toFixed(2)}€</span>
+                  <span className="text-gray-400">Livraison ({selectedShipping?.name || '—'})</span>
+                  {shippingCost === 0 ? (
+                    <span className="text-green-400 font-bold">Gratuite ✓</span>
+                  ) : (
+                    <span>+{shippingCost.toFixed(2)}€</span>
+                  )}
                 </div>
                 {useWallet && (
                   <div className="flex justify-between text-sm text-orange-400">
-                    <span>Remise Portefeuille</span>
+                    <span>Portefeuille</span>
                     <span>-{Math.min(safeTotal, safeWalletBalance).toFixed(2)}€</span>
+                  </div>
+                )}
+                {!isFreeShipping && amountToFreeShipping > 0 && shippingCost > 0 && (
+                  <div className="text-[10px] text-orange-300 pt-1 border-t border-white/5">
+                    💡 Plus que {amountToFreeShipping.toFixed(2)}€ pour la livraison offerte
                   </div>
                 )}
               </div>
