@@ -3,150 +3,116 @@ import React from 'react';
 export const PolitiqueConfidentialitePage: React.FC = () => {
   return (
     <div className="container mx-auto px-4 py-12 max-w-4xl">
-      <h1 className="text-4xl font-black mb-8">Politique de Confidentialité</h1>
-      
-      <div className="prose prose-lg max-w-none space-y-8">
-        <section>
-          <h2 className="text-2xl font-bold mb-4">1. Introduction</h2>
-          <p className="text-gray-700 leading-relaxed">
-            SuperMalin accorde une grande importance à la protection de vos données personnelles. Cette politique de confidentialité vous informe sur la manière dont nous collectons, utilisons, partageons et protégeons vos informations conformément au Règlement Général sur la Protection des Données (RGPD) et à la loi Informatique et Libertés.
-          </p>
-        </section>
+      <h1 className="text-4xl font-black mb-2">Politique de Confidentialité</h1>
+      <p className="text-gray-400 text-sm mb-10">Dernière mise à jour : 30 avril 2026</p>
 
-        <section>
-          <h2 className="text-2xl font-bold mb-4">2. Responsable du traitement</h2>
-          <p className="text-gray-700 leading-relaxed">
-            Le responsable du traitement de vos données personnelles est <strong>SUPER MALIN SAS</strong>, contactable à l'adresse <strong>contact@supermalin.fr</strong>.
-          </p>
-        </section>
+      <div className="space-y-8">
 
-        <section>
-          <h2 className="text-2xl font-bold mb-4">3. Données collectées</h2>
-          <p className="text-gray-700 leading-relaxed mb-3">
-            SUPER MALIN peut collecter les données suivantes :
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700">
-            <li>Nom</li>
-            <li>Prénom</li>
-            <li>Adresse</li>
-            <li>Email</li>
-            <li>Téléphone</li>
-            <li>Historique des commandes</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4">4. Finalité</h2>
-          <p className="text-gray-700 leading-relaxed mb-3">
-            Ces données sont utilisées pour :
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700">
-            <li>Gestion des commandes</li>
-            <li>Livraison</li>
-            <li>Facturation</li>
-            <li>Service client</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4">5. Durée de conservation</h2>
-          <p className="text-gray-700 leading-relaxed">
-            Les données sont conservées pendant une durée maximale de 5 ans, sauf obligation légale contraire.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4">6. Destinataires des données</h2>
-          <p className="text-gray-700 leading-relaxed mb-3">
-            Vos données peuvent être partagées avec les catégories de destinataires suivantes :
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700">
-            <li><strong>Personnel autorisé de SUPER MALIN</strong></li>
-            <li><strong>Prestataires techniques :</strong> Hébergement (o2switch), base de données (Supabase), envoi d'emails (Resend)</li>
-            <li><strong>Prestataire de paiement :</strong> Stripe (conforme PCI-DSS)</li>
-            <li><strong>Transporteurs :</strong> Mondial Relay, Colissimo, Chronopost (uniquement pour l'expédition)</li>
-            <li><strong>Autorités compétentes :</strong> En cas d'obligation légale ou de fraude avérée</li>
-          </ul>
-          <p className="text-gray-700 leading-relaxed mt-3">
-            Nous ne vendons ni ne louons vos données personnelles à des tiers.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4">7. Vos droits</h2>
-          <p className="text-gray-700 leading-relaxed mb-3">
-            Conformément au RGPD, les utilisateurs disposent :
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700">
-            <li>D'un droit d'accès</li>
-            <li>D'un droit de rectification</li>
-            <li>D'un droit de suppression</li>
-            <li>D'un droit d'opposition</li>
-          </ul>
-          <p className="text-gray-700 leading-relaxed mt-4">
-            Toute demande peut être adressée à : <strong>contact@supermalin.fr</strong>
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4">8. Sécurité des données</h2>
-          <p className="text-gray-700 leading-relaxed">
-            Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données contre tout accès non autorisé, perte, destruction ou divulgation :
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700 mt-3">
-            <li>Chiffrement SSL/TLS pour toutes les communications</li>
-            <li>Hébergement sécurisé et sauvegardé</li>
-            <li>Accès restreint aux données par mot de passe</li>
-            <li>Paiement sécurisé via Stripe (certifié PCI-DSS)</li>
-          </ul>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4">9. Transferts internationaux</h2>
-          <p className="text-gray-700 leading-relaxed">
-            Certains de nos prestataires (Supabase, Stripe) peuvent stocker vos données en dehors de l'Union Européenne. Ces transferts sont encadrés par des garanties appropriées (clauses contractuelles types, certifications Privacy Shield).
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4">10. Cookies</h2>
-          <p className="text-gray-700 leading-relaxed mb-3">
-            Nous utilisons les cookies suivants :
-          </p>
-          <ul className="list-disc pl-6 space-y-2 text-gray-700">
-            <li><strong>Cookies strictement nécessaires :</strong> Authentification, panier, sécurité (pas de consentement requis)</li>
-            <li><strong>Cookies fonctionnels :</strong> Préférences utilisateur (avec consentement)</li>
-          </ul>
-          <p className="text-gray-700 leading-relaxed mt-3">
-            Vous pouvez configurer votre navigateur pour refuser les cookies, mais cela peut affecter le fonctionnement du site.
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4">11. Réclamation</h2>
-          <p className="text-gray-700 leading-relaxed">
-            Si vous estimez que vos droits ne sont pas respectés, vous pouvez introduire une réclamation auprès de la Commission Nationale de l'Informatique et des Libertés (CNIL) :
-          </p>
-          <p className="text-gray-700 leading-relaxed mt-3">
-            <strong>CNIL</strong><br />
-            3 Place de Fontenoy - TSA 80715<br />
-            75334 PARIS CEDEX 07<br />
-            Site web : <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">www.cnil.fr</a>
-          </p>
-        </section>
-
-        <section>
-          <h2 className="text-2xl font-bold mb-4">12. Modifications</h2>
-          <p className="text-gray-700 leading-relaxed">
-            SuperMalin se réserve le droit de modifier cette politique de confidentialité à tout moment. Toute modification sera publiée sur cette page avec la date de mise à jour.
-          </p>
-        </section>
-
-        <div className="bg-orange-50 border-l-4 border-orange-600 p-6 rounded-r-xl mt-8">
-          <p className="text-sm text-gray-700">
-            <strong>Date de dernière mise à jour :</strong> 26 février 2026
+        <div className="bg-blue-50 border border-blue-100 rounded-2xl p-6">
+          <p className="text-sm text-gray-700 leading-relaxed">
+            MounAchatMalin SAS (exploitant SuperMalin) s'engage à protéger vos données personnelles conformément au <strong>Règlement Général sur la Protection des Données (RGPD)</strong> et à la loi n° 78-17 du 6 janvier 1978. Cette politique vous explique quelles données nous collectons, pourquoi et comment vous pouvez les contrôler.
           </p>
         </div>
+
+        <section className="bg-white border border-gray-100 rounded-2xl p-8">
+          <h2 className="text-xl font-black mb-4 text-gray-900">1. Responsable du traitement</h2>
+          <div className="text-sm text-gray-700 space-y-1">
+            <p><strong>MounAchatMalin SAS</strong></p>
+            <p>13 rue René Latour, 60620 Acy-en-Multien</p>
+            <p>SIRET : 928 223 221 00013</p>
+            <p>Email : <a href="mailto:contact@supermalin.fr" className="text-orange-600 hover:underline">contact@supermalin.fr</a></p>
+          </div>
+        </section>
+
+        <section className="bg-white border border-gray-100 rounded-2xl p-8">
+          <h2 className="text-xl font-black mb-4 text-gray-900">2. Données collectées</h2>
+          <p className="text-gray-700 text-sm leading-relaxed mb-4">Nous collectons uniquement les données nécessaires au fonctionnement du service :</p>
+          <div className="space-y-3">
+            {[
+              { titre: "Données de compte", detail: "Prénom, nom, adresse email, mot de passe (chiffré) — lors de l'inscription." },
+              { titre: "Données de commande", detail: "Adresse de livraison, numéro de téléphone, historique d'achats — pour traiter vos commandes." },
+              { titre: "Données de paiement", detail: "Aucune donnée bancaire n'est stockée par SuperMalin. Le paiement est intégralement géré par Stripe." },
+              { titre: "Données de navigation", detail: "Adresse IP, type de navigateur, pages visitées — collectées automatiquement pour la sécurité et l'amélioration du service." },
+            ].map((item, i) => (
+              <div key={i} className="flex gap-3 text-sm">
+                <span className="text-orange-500 font-bold mt-0.5">›</span>
+                <div><strong className="text-gray-900">{item.titre} :</strong> <span className="text-gray-700">{item.detail}</span></div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="bg-white border border-gray-100 rounded-2xl p-8">
+          <h2 className="text-xl font-black mb-4 text-gray-900">3. Finalités du traitement</h2>
+          <div className="space-y-2 text-sm text-gray-700">
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span>Gestion des comptes clients et authentification</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span>Traitement et livraison des commandes</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span>Communication transactionnelle (confirmation de commande, suivi, retours)</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span>Amélioration du service et analyse d'audience (données anonymisées)</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span>Respect des obligations légales et fiscales</span></div>
+          </div>
+        </section>
+
+        <section className="bg-white border border-gray-100 rounded-2xl p-8">
+          <h2 className="text-xl font-black mb-4 text-gray-900">4. Base légale des traitements</h2>
+          <p className="text-gray-700 text-sm leading-relaxed">
+            Nos traitements reposent sur : l'<strong>exécution du contrat</strong> (commandes), le <strong>respect d'obligations légales</strong> (facturation, fiscalité), notre <strong>intérêt légitime</strong> (sécurité, amélioration du service) et votre <strong>consentement</strong> (communications marketing optionnelles).
+          </p>
+        </section>
+
+        <section className="bg-white border border-gray-100 rounded-2xl p-8">
+          <h2 className="text-xl font-black mb-4 text-gray-900">5. Sous-traitants et partage de données</h2>
+          <p className="text-gray-700 text-sm leading-relaxed mb-4">Vos données sont partagées uniquement avec les prestataires nécessaires à la fourniture du service, dans le cadre d'un contrat de sous-traitance conforme au RGPD :</p>
+          <div className="space-y-2 text-sm text-gray-700">
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Stripe</strong> — paiement sécurisé</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Supabase</strong> — base de données et stockage (serveurs UE)</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Vercel</strong> — hébergement de l'interface web</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Transporteurs</strong> (Colissimo, Mondial Relay, Chronopost) — livraison (adresse de livraison uniquement)</span></div>
+          </div>
+          <p className="text-gray-700 text-sm mt-4">Vos données ne sont <strong>jamais vendues</strong> à des tiers à des fins commerciales.</p>
+        </section>
+
+        <section className="bg-white border border-gray-100 rounded-2xl p-8">
+          <h2 className="text-xl font-black mb-4 text-gray-900">6. Durée de conservation</h2>
+          <div className="space-y-2 text-sm text-gray-700">
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Données de compte :</strong> durée de l'inscription + 3 ans après la dernière commande</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Données de commande :</strong> 10 ans (obligations comptables et fiscales)</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Données de navigation :</strong> 13 mois maximum</span></div>
+          </div>
+        </section>
+
+        <section className="bg-white border border-gray-100 rounded-2xl p-8">
+          <h2 className="text-xl font-black mb-4 text-gray-900">7. Vos droits</h2>
+          <p className="text-gray-700 text-sm leading-relaxed mb-4">Conformément au RGPD, vous disposez des droits suivants :</p>
+          <div className="space-y-2 text-sm text-gray-700">
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Droit d'accès</strong> — obtenir une copie de vos données</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Droit de rectification</strong> — corriger des données inexactes</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Droit à l'effacement</strong> — supprimer vos données (sous conditions légales)</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Droit à la portabilité</strong> — recevoir vos données dans un format structuré</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Droit d'opposition</strong> — s'opposer à certains traitements</span></div>
+            <div className="flex gap-2"><span className="text-orange-500 font-bold">›</span><span><strong>Droit à la limitation</strong> — restreindre temporairement un traitement</span></div>
+          </div>
+          <p className="text-gray-700 text-sm mt-4">
+            Pour exercer ces droits : <a href="mailto:contact@supermalin.fr" className="text-orange-600 hover:underline">contact@supermalin.fr</a>. Réponse sous 30 jours. En cas de litige, vous pouvez saisir la <strong>CNIL</strong> sur <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">cnil.fr</a>.
+          </p>
+        </section>
+
+        <section className="bg-white border border-gray-100 rounded-2xl p-8">
+          <h2 className="text-xl font-black mb-4 text-gray-900">8. Cookies</h2>
+          <p className="text-gray-700 text-sm leading-relaxed mb-3">
+            SuperMalin utilise uniquement des cookies <strong>techniques essentiels</strong> au fonctionnement du service (session, panier, authentification). Ces cookies ne nécessitent pas de consentement.
+          </p>
+          <p className="text-gray-700 text-sm leading-relaxed">
+            Aucun cookie publicitaire ou de tracking tiers n'est déposé sans votre consentement explicite. Vous pouvez configurer votre navigateur pour refuser tous les cookies, ce qui peut altérer certaines fonctionnalités du site.
+          </p>
+        </section>
+
+        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-6 text-center">
+          <p className="text-sm text-gray-600">
+            Pour toute question relative à vos données : <a href="mailto:contact@supermalin.fr" className="text-orange-600 font-bold hover:underline">contact@supermalin.fr</a>
+          </p>
+        </div>
+
       </div>
     </div>
   );
