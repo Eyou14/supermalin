@@ -536,6 +536,87 @@ const setupRoutes = (router: Hono) => {
     return c.json(updated);
   });
 
+  // Ship order — met à jour le statut + envoie l'email d'expédition au client
+  router.post("/orders/:id/ship", async (c) => {
+    try {
+      const id = c.req.param('id');
+      const { trackingNumber, carrier } = await c.req.json().catch(() => ({}));
+
+      const order = await kv.get(`order:${id}`);
+      if (!order) return c.json({ error: "Commande introuvable" }, 404);
+      if (order.status === 'shipped') return c.json({ error: "Déjà expédiée" }, 400);
+
+      // Mise à jour statut
+      const updated = {
+        ...order,
+        status: 'shipped',
+        shippedAt: new Date().toISOString(),
+        trackingNumber: trackingNumber || null,
+        carrier: carrier || null,
+      };
+      await kv.set(`order:${id}`, updated);
+
+      // Email d'expédition au client
+      const clientEmail = order.shippingInfo?.email || order.email;
+      if (clientEmail && RESEND_API_KEY) {
+        const clientName = order.shippingInfo?.name || order.customerName || 'Client';
+        const itemsList = (order.items || []).map((item: any) =>
+          `<li style="margin-bottom:6px;color:#374151;"><strong>${item.name}</strong> — ${item.price}€</li>`
+        ).join('');
+
+        const trackingBlock = trackingNumber ? `
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin:20px 0;">
+            <p style="margin:0 0 6px;font-size:13px;color:#166534;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;">📦 Numéro de suivi</p>
+            <p style="margin:0;font-size:22px;font-weight:900;color:#15803d;letter-spacing:0.05em;">${trackingNumber}</p>
+            ${carrier ? `<p style="margin:6px 0 0;font-size:13px;color:#166534;">Transporteur : <strong>${carrier}</strong></p>` : ''}
+          </div>` : '';
+
+        await resend.emails.send({
+          from: 'SuperMalin <contact@supermalin.fr>',
+          to: [clientEmail],
+          subject: `🚚 Votre commande ${id} est en route !`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+              <div style="background:linear-gradient(135deg,#f97316 0%,#fb923c 100%);padding:30px;text-align:center;border-radius:12px 12px 0 0;">
+                <h1 style="color:white;margin:0;font-size:26px;">🚚 C'est parti !</h1>
+                <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:15px;">Votre commande est en cours d'acheminement</p>
+              </div>
+              <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+                <p style="font-size:16px;color:#374151;">Bonjour <strong>${clientName}</strong>,</p>
+                <p style="color:#6b7280;">Bonne nouvelle ! Votre commande <strong style="color:#f97316;">${id}</strong> vient d'être expédiée.</p>
+                ${trackingBlock}
+                <div style="background:#f9fafb;padding:16px;border-radius:8px;margin:20px 0;">
+                  <h3 style="margin:0 0 10px;color:#111827;font-size:14px;">Articles expédiés</h3>
+                  <ul style="list-style:none;padding:0;margin:0;">${itemsList}</ul>
+                </div>
+                <div style="background:#fff7ed;border-left:4px solid #f97316;padding:14px;border-radius:4px;margin:16px 0;">
+                  <p style="margin:0;font-weight:bold;color:#9a3412;">Total payé : ${(order.total || 0).toFixed(2)}€</p>
+                </div>
+                <div style="margin-top:20px;">
+                  <h3 style="color:#111827;font-size:14px;margin-bottom:8px;">Adresse de livraison</h3>
+                  <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">
+                    ${order.shippingInfo?.name || ''}<br>
+                    ${order.shippingInfo?.address || ''}<br>
+                    ${order.shippingInfo?.postalCode || ''} ${order.shippingInfo?.city || ''}
+                  </p>
+                </div>
+                <p style="font-size:13px;color:#9ca3af;margin-top:24px;">Une question ? Contactez-nous à <a href="mailto:contact@supermalin.fr" style="color:#f97316;">contact@supermalin.fr</a></p>
+              </div>
+              <div style="text-align:center;padding:16px;">
+                <p style="color:#9ca3af;font-size:11px;margin:0;">MounAchatMalin SAS — SuperMalin — SIRET 928 223 221 00013</p>
+              </div>
+            </div>
+          `,
+        });
+      }
+
+      return c.json({ success: true, order: updated });
+    } catch (e) {
+      console.error("Ship order error:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
   // Requests (Buybacks/Consignment)
   router.get("/requests", async (c) => {
     const requests = await kv.getByPrefix("request:");

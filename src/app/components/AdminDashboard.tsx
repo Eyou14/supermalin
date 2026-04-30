@@ -28,6 +28,7 @@ import {
   Send,
   Archive,
   BadgeCheck,
+  PackageCheck,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -84,6 +85,10 @@ export const AdminDashboard = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUserModalOpen, setIsUserModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [shippingOrder, setShippingOrder] = useState<any | null>(null);
+  const [trackingNumber, setTrackingNumber] = useState('');
+  const [carrier, setCarrier] = useState('Colissimo');
+  const [isShipping, setIsShipping] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [sectionsConfig, setSectionsConfig] = useState({
     bannerMessage1: 'Derniers arrivages : +250 produits cette semaine',
@@ -176,6 +181,33 @@ export const AdminDashboard = () => {
     }
   };
   // ──────────────────────────────────────────────────────────────────────────
+
+  const handleShipOrder = async () => {
+    if (!shippingOrder) return;
+    setIsShipping(true);
+    try {
+      const response = await fetch(`${API_URL}/orders/${shippingOrder.id}/ship`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({ trackingNumber: trackingNumber.trim() || null, carrier: carrier || null }),
+      });
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Erreur serveur');
+      }
+      toast.success(`📦 Commande ${shippingOrder.id} marquée expédiée — email envoyé au client !`);
+      setShippingOrder(null);
+      setTrackingNumber('');
+      setCarrier('Colissimo');
+      // Rafraîchir les commandes
+      const res = await fetch(`${API_URL}/orders`, { headers: { Authorization: `Bearer ${publicAnonKey}` } });
+      if (res.ok) setOrders(await res.json());
+    } catch (e: any) {
+      toast.error(e.message || 'Erreur lors de l\'expédition');
+    } finally {
+      setIsShipping(false);
+    }
+  };
 
   const handleAddProduct = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -570,25 +602,36 @@ export const AdminDashboard = () => {
                               ? 'bg-green-100 text-green-700'
                               : order.status === 'pending'
                               ? 'bg-yellow-100 text-yellow-700'
+                              : order.status === 'shipped'
+                              ? 'bg-blue-100 text-blue-700'
                               : 'bg-gray-100 text-gray-700'
                           }`}
                         >
-                          {order.status === 'paid'
-                            ? 'Payé'
-                            : order.status === 'pending'
-                            ? 'Attente'
+                          {order.status === 'paid' ? 'Payé'
+                            : order.status === 'pending' ? 'Attente'
+                            : order.status === 'shipped' ? '🚚 Expédié'
                             : order.status}
                         </span>
+                        {order.trackingNumber && (
+                          <p className="text-[10px] text-gray-400 mt-1">N° {order.trackingNumber}</p>
+                        )}
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          <button className="p-2 text-gray-400 hover:text-blue-600">
-                            <Eye size={18} />
-                          </button>
                           {order.status === 'paid' && (
-                            <button className="p-2 text-gray-400 hover:text-green-600">
-                              <CheckCircle size={18} />
+                            <button
+                              onClick={() => { setShippingOrder(order); setTrackingNumber(''); setCarrier('Colissimo'); }}
+                              className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 transition-all"
+                            >
+                              <Truck size={14} />
+                              Expédier
                             </button>
+                          )}
+                          {order.status === 'shipped' && (
+                            <span className="flex items-center gap-1 text-blue-600 text-xs font-bold">
+                              <PackageCheck size={14} />
+                              Expédié
+                            </span>
                           )}
                         </div>
                       </td>
@@ -1328,6 +1371,110 @@ export const AdminDashboard = () => {
                   Créer le compte
                 </button>
               </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Modal Expédition ──────────────────────────────────────────────── */}
+      <AnimatePresence>
+        {shippingOrder && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => !isShipping && setShippingOrder(null)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative bg-white w-full max-w-md rounded-[2.5rem] p-10 shadow-2xl"
+            >
+              {/* Icône */}
+              <div className="w-16 h-16 rounded-2xl bg-orange-50 flex items-center justify-center mb-6">
+                <Truck size={32} className="text-orange-600" />
+              </div>
+
+              <h2 className="text-2xl font-black mb-1">Expédier la commande</h2>
+              <p className="text-sm text-gray-500 mb-6">
+                Commande <span className="font-mono font-bold text-gray-800">{shippingOrder.id}</span>
+                {' '}— {(shippingOrder.total || shippingOrder.total_amount)?.toLocaleString()}€
+              </p>
+
+              {/* Articles */}
+              <div className="bg-gray-50 rounded-xl p-4 mb-6 space-y-1">
+                {(shippingOrder.items || shippingOrder.order_items || []).map((item: any, idx: number) => (
+                  <p key={idx} className="text-xs text-gray-600">
+                    • {item.name || item.product_title || item.title}
+                    {item.quantity > 1 && <span className="text-gray-400"> ×{item.quantity}</span>}
+                  </p>
+                ))}
+              </div>
+
+              <div className="space-y-4">
+                {/* Transporteur */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
+                    Transporteur
+                  </label>
+                  <select
+                    value={carrier}
+                    onChange={(e) => setCarrier(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                  >
+                    <option value="Colissimo">Colissimo</option>
+                    <option value="Mondial Relay">Mondial Relay</option>
+                    <option value="Chronopost">Chronopost</option>
+                    <option value="DHL">DHL</option>
+                    <option value="UPS">UPS</option>
+                    <option value="Autre">Autre</option>
+                  </select>
+                </div>
+
+                {/* Numéro de suivi */}
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400 tracking-wider">
+                    Numéro de suivi <span className="text-gray-300 font-normal">(optionnel)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={trackingNumber}
+                    onChange={(e) => setTrackingNumber(e.target.value)}
+                    placeholder="ex: 1Z999AA10123456784"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-200"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-3 mt-8">
+                <button
+                  onClick={() => setShippingOrder(null)}
+                  disabled={isShipping}
+                  className="flex-1 py-3.5 border border-gray-200 text-gray-600 font-bold rounded-xl hover:bg-gray-50 transition-all disabled:opacity-50"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={handleShipOrder}
+                  disabled={isShipping}
+                  className="flex-1 py-3.5 bg-orange-600 text-white font-bold rounded-xl hover:bg-orange-700 transition-all flex items-center justify-center gap-2 disabled:opacity-70"
+                >
+                  {isShipping ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Envoi…
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} />
+                      Envoyer la notification
+                    </>
+                  )}
+                </button>
+              </div>
             </motion.div>
           </div>
         )}
