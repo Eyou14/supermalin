@@ -1,7 +1,6 @@
-import { Gavel, Mail, Phone, MapPin, LayoutDashboard } from "lucide-react";
+import { Mail, Phone, MapPin } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Logo } from "./Logo";
-const hdfLogo = "/logo-hdf.svg";
 
 export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) => {
   const navigate = useNavigate();
@@ -99,19 +98,26 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
                 </a>
               </li>
               <li className="flex items-start gap-3">
-                <MapPin size={18} className="text-orange-500 mt-0.5" />
-                <span className="text-gray-500 text-sm">Hauts-de-France</span>
+                <MapPin size={18} className="text-orange-500 mt-0.5 shrink-0" />
+                <span className="text-gray-500 text-sm">Chauconin-Neufmontiers (77)<br/>Seine-et-Marne — Île-de-France</span>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Partner Section */}
-        <div className="mb-12 flex items-center justify-center gap-8 p-6 bg-blue-50 rounded-2xl">
-          <img src={hdfLogo} alt="Région Hauts-de-France" className="h-16 w-auto" />
-          <p className="text-sm text-gray-700 max-w-md">
-            SuperMalin est soutenu par la <strong>Région Hauts-de-France</strong> dans le cadre de son développement.
-          </p>
+        {/* Engagements bar */}
+        <div className="mb-12 grid grid-cols-2 md:grid-cols-4 gap-4">
+          {[
+            { icon: '🚚', label: 'Expédition 24/48h' },
+            { icon: '🔒', label: 'Paiement sécurisé' },
+            { icon: '↩️', label: 'Retours 14 jours' },
+            { icon: '🎁', label: 'Livraison offerte dès 50€' },
+          ].map((item) => (
+            <div key={item.label} className="flex items-center gap-3 p-4 bg-orange-50 rounded-2xl">
+              <span className="text-xl">{item.icon}</span>
+              <span className="text-sm font-bold text-gray-800">{item.label}</span>
+            </div>
+          ))}
         </div>
 
         <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">

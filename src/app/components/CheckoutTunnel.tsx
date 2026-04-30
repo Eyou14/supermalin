@@ -106,7 +106,7 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
     {
       id: 'retrait' as ShippingMethod,
       name: 'Retrait en main propre',
-      description: 'Sur rendez-vous — Acy-en-Multien (60)',
+      description: 'Sur rendez-vous — Chauconin-Neufmontiers (77)',
       basePrice: 0,
       price: 0,
       free: true,
@@ -404,27 +404,75 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                 </div>
 
                 {/* ── Adresse ── */}
-                {shippingMethod !== 'retrait' && (
+                {shippingMethod === 'mondial_relay' && (
                   <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-                    <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
-                      <MapPin className="text-gray-400" size={20} />
-                      {shippingMethod === 'mondial_relay' ? 'Adresse pour trouver les points relais' : 'Adresse de livraison'}
+                    <h2 className="text-2xl font-black mb-2 flex items-center gap-3">
+                      <MapPin className="text-green-600" size={20} /> Point relais Mondial Relay
                     </h2>
+                    <p className="text-sm text-gray-500 mb-6">Trouvez le point relais le plus proche de chez vous, puis renseignez son adresse ci-dessous.</p>
+
+                    {/* Lien vers le localisateur officiel */}
+                    <a
+                      href={`https://www.mondialrelay.fr/trouver-le-point-le-plus-proche/${postalCode || ''}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-3 p-4 rounded-2xl bg-green-50 border border-green-200 text-green-800 font-bold text-sm hover:bg-green-100 transition-all mb-5"
+                    >
+                      <span className="text-xl">🗺️</span>
+                      <div>
+                        <p className="font-black">Trouver un point relais →</p>
+                        <p className="text-xs font-normal text-green-700">mondialrelay.fr — localisateur officiel</p>
+                      </div>
+                    </a>
+
                     <div className="space-y-3">
-                      {shippingMethod !== 'mondial_relay' && (
-                        <input
-                          type="text"
-                          value={address}
-                          onChange={(e) => setAddress(e.target.value)}
-                          placeholder="Numéro et nom de rue"
-                          className="w-full p-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none text-sm"
-                        />
-                      )}
                       <div className="grid grid-cols-2 gap-3">
                         <input
                           type="text"
                           value={postalCode}
-                          onChange={handlePostalCodeChange}
+                          onChange={(e) => setPostalCode(e.target.value)}
+                          placeholder="Code postal"
+                          className="p-3 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none text-sm"
+                          maxLength={5}
+                        />
+                        <input
+                          type="text"
+                          value={city}
+                          onChange={(e) => setCity(e.target.value)}
+                          placeholder="Ville"
+                          className="p-3 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none text-sm"
+                        />
+                      </div>
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="Nom & adresse du point relais choisi"
+                        className="w-full p-3 rounded-xl border border-gray-200 focus:border-green-500 focus:outline-none text-sm"
+                      />
+                      <p className="text-[11px] text-gray-400">Ex : Tabac du Commerce — 12 rue de la Paix, Paris</p>
+                    </div>
+                  </div>
+                )}
+
+                {(shippingMethod === 'colissimo' || shippingMethod === 'chronopost') && (
+                  <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
+                    <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
+                      <MapPin className="text-gray-400" size={20} /> Adresse de livraison
+                    </h2>
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        placeholder="Numéro et nom de rue"
+                        className="w-full p-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none text-sm"
+                      />
+                      <div className="grid grid-cols-2 gap-3">
+                        <input
+                          type="text"
+                          value={postalCode}
+                          onChange={(e) => setPostalCode(e.target.value)}
                           placeholder="Code postal"
                           className="p-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none text-sm"
                           maxLength={5}
@@ -437,24 +485,6 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                           className="p-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none text-sm"
                         />
                       </div>
-                      {shippingMethod === 'mondial_relay' && nearbyRelays.length > 0 && (
-                        <div className="mt-4 space-y-2">
-                          <p className="text-xs font-black uppercase text-gray-400 tracking-wider">Points relais proches</p>
-                          {relayPoints.slice(0, 4).map((relay: any) => (
-                            <button
-                              key={relay.id}
-                              onClick={() => { setSelectedRelay(relay.id); setAddress(relay.address); }}
-                              className={`w-full p-3 rounded-xl border text-left transition-all text-sm flex justify-between items-center ${selectedRelay === relay.id ? 'border-green-500 bg-green-50' : 'border-gray-100 hover:border-gray-200'}`}
-                            >
-                              <div>
-                                <p className="font-bold text-gray-900">{relay.name}</p>
-                                <p className="text-xs text-gray-500">{relay.address}</p>
-                              </div>
-                              <span className="text-xs text-gray-400 shrink-0 ml-2">{relay.distance}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
@@ -463,8 +493,9 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                   <div className="bg-gray-50 rounded-2xl border border-gray-100 p-6 flex items-start gap-4">
                     <span className="text-2xl">📍</span>
                     <div>
-                      <p className="font-bold text-gray-900 mb-1">Retrait à Acy-en-Multien (60620)</p>
-                      <p className="text-sm text-gray-600">13 rue René Latour — Un rendez-vous sera convenu par email après confirmation de commande.</p>
+                      <p className="font-bold text-gray-900 mb-1">Retrait — STORAGE24, Chauconin-Neufmontiers (77)</p>
+                      <p className="text-sm text-gray-600 mb-2">13 Av. Roland Moreno, 77124 Chauconin-Neufmontiers</p>
+                      <p className="text-sm text-gray-500">Un rendez-vous sera convenu par email après confirmation de votre commande.</p>
                     </div>
                   </div>
                 )}
