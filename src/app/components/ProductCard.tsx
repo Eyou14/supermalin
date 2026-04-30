@@ -83,18 +83,35 @@ export const ProductCard = ({
     "Pour pièces": "bg-red-100 text-red-700 border-red-200",
   };
 
+  const isOutOfStock = product.stock === 0;
+
   return (
     <motion.div
-      whileHover={{ y: -4 }}
-      className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all overflow-hidden cursor-pointer flex flex-col h-full group"
-      onClick={onClick}
+      whileHover={isOutOfStock ? {} : { y: -4 }}
+      className={`bg-white rounded-2xl border shadow-sm transition-all overflow-hidden flex flex-col h-full group ${
+        isOutOfStock
+          ? "border-gray-200 opacity-75 cursor-not-allowed"
+          : "border-gray-100 hover:shadow-md cursor-pointer"
+      }`}
+      onClick={isOutOfStock ? undefined : onClick}
     >
       <div className="relative aspect-square overflow-hidden bg-gray-50">
         <ImageWithFallback
           src={productImage}
           alt={productTitle}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+          className={`w-full h-full object-cover transition-transform duration-500 ${
+            isOutOfStock ? "grayscale" : "group-hover:scale-105"
+          }`}
         />
+
+        {/* Overlay rupture de stock */}
+        {isOutOfStock && (
+          <div className="absolute inset-0 bg-gray-900/40 flex items-center justify-center">
+            <span className="bg-gray-900/90 text-white text-xs font-black uppercase tracking-widest px-4 py-2 rounded-full">
+              Rupture de stock
+            </span>
+          </div>
+        )}
 
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           <span
@@ -190,9 +207,12 @@ export const ProductCard = ({
           </div>
 
           <button
-            onClick={onAction}
+            onClick={isOutOfStock ? undefined : onAction}
+            disabled={isOutOfStock}
             className={`p-2 rounded-xl transition-all ${
-              product.type === "auction"
+              isOutOfStock
+                ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                : product.type === "auction"
                 ? "bg-orange-600 text-white hover:bg-orange-700"
                 : "bg-blue-600 text-white hover:bg-blue-700"
             }`}
