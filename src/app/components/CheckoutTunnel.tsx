@@ -284,7 +284,7 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-5xl">
+    <div className="container mx-auto px-4 py-8 max-w-5xl pb-32 md:pb-8">
       {step !== 'confirmation' && (
         <div className="flex items-center justify-between mb-8">
           <button onClick={onBack} className="flex items-center gap-2 text-gray-500 hover:text-gray-900 font-bold">
@@ -346,8 +346,8 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                 </div>
 
                 {/* ── Options de livraison ── */}
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-                  <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
+                <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-gray-100 p-5 md:p-8 shadow-sm">
+                  <h2 className="text-xl md:text-2xl font-black mb-5 flex items-center gap-3">
                     <MapPin className="text-orange-600" /> Mode de livraison
                   </h2>
                   <div className="space-y-3">
@@ -405,8 +405,8 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
 
                 {/* ── Adresse ── */}
                 {shippingMethod === 'mondial_relay' && (
-                  <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-                    <h2 className="text-2xl font-black mb-2 flex items-center gap-3">
+                  <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-gray-100 p-5 md:p-8 shadow-sm">
+                    <h2 className="text-xl md:text-2xl font-black mb-2 flex items-center gap-3">
                       <MapPin className="text-green-600" size={20} /> Point relais Mondial Relay
                     </h2>
                     <p className="text-sm text-gray-500 mb-6">Trouvez le point relais le plus proche de chez vous, puis renseignez son adresse ci-dessous.</p>
@@ -456,8 +456,8 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                 )}
 
                 {(shippingMethod === 'colissimo' || shippingMethod === 'chronopost') && (
-                  <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-                    <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
+                  <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-gray-100 p-5 md:p-8 shadow-sm">
+                    <h2 className="text-xl md:text-2xl font-black mb-5 flex items-center gap-3">
                       <MapPin className="text-gray-400" size={20} /> Adresse de livraison
                     </h2>
                     <div className="space-y-3">
@@ -504,8 +504,8 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
 
             {step === 'payment' && (
               <motion.div key="payment" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="space-y-6">
-                <div className="bg-white rounded-[2.5rem] border border-gray-100 p-8 shadow-sm">
-                  <h2 className="text-2xl font-black mb-6 flex items-center gap-3">
+                <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-gray-100 p-5 md:p-8 shadow-sm">
+                  <h2 className="text-xl md:text-2xl font-black mb-5 flex items-center gap-3">
                     <CreditCard className="text-blue-600" /> Paiement
                   </h2>
                   <div className={`p-6 rounded-2xl border mb-6 ${useWallet ? 'bg-orange-50 border-orange-200' : 'bg-gray-50'}`}>
@@ -541,7 +541,7 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
             )}
 
             {step === 'confirmation' && (
-              <motion.div key="confirmation" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center p-12 bg-white rounded-[2.5rem] border border-gray-100 shadow-xl">
+              <motion.div key="confirmation" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="text-center p-8 md:p-12 bg-white rounded-2xl md:rounded-[2.5rem] border border-gray-100 shadow-xl">
                 <CheckCircle2 size={64} className="mx-auto text-green-500 mb-6" />
                 <h2 className="text-3xl font-black mb-4">Commande Confirmée !</h2>
                 <p className="text-gray-500 mb-8">Votre commande SuperMalin a été enregistrée avec succès.</p>
@@ -553,7 +553,7 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
 
         {step !== 'confirmation' && (
           <div className="lg:col-span-4">
-            <div className="bg-gray-900 rounded-[2rem] p-8 text-white sticky top-24">
+            <div className="bg-gray-900 rounded-2xl md:rounded-[2rem] p-6 md:p-8 text-white sticky top-24">
               <h3 className="font-bold mb-6">Résumé</h3>
               <div className="space-y-4 mb-8">
                 {cart?.map((item, i) => (
@@ -609,6 +609,45 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
           </div>
         )}
       </div>
+
+      {/* ── Sticky Mobile CTA ── */}
+      {step !== 'confirmation' && (
+        <div
+          className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-white border-t border-gray-100 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] px-4 pt-3"
+          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom) + 12px)' }}
+        >
+          <div className="flex items-center justify-between mb-2.5">
+            <div className="text-xs text-gray-500">
+              {step === 'shipping' ? 'Livraison : ' : 'Total à payer'}
+              {step === 'shipping' && (
+                <span className="font-bold text-gray-800 ml-1">
+                  {shippingCost === 0 ? (
+                    <span className="text-green-600">Gratuite ✓</span>
+                  ) : (
+                    `+${shippingCost.toFixed(2)}€`
+                  )}
+                </span>
+              )}
+            </div>
+            <div className="text-right">
+              <span className="text-lg font-black text-gray-900">{finalTotal.toFixed(2)}€</span>
+            </div>
+          </div>
+          <button
+            onClick={handleNext}
+            disabled={isProcessing}
+            className="w-full bg-orange-600 hover:bg-orange-700 active:bg-orange-800 py-3.5 rounded-xl font-black text-white text-base transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-orange-600/20"
+          >
+            {isProcessing ? (
+              <><div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent" /> Traitement...</>
+            ) : step === 'shipping' ? (
+              <>Continuer au paiement <ChevronRight size={20} /></>
+            ) : (
+              <>Payer {finalTotal > 0 ? `${finalTotal.toFixed(2)}€` : 'maintenant'} <Lock size={16} /></>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

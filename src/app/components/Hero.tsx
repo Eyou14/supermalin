@@ -41,7 +41,7 @@ export const Hero = ({ onNavigate }: { onNavigate: (page: string) => void }) => 
   }, []);
 
   return (
-    <div className="relative bg-gray-900 overflow-hidden min-h-[540px]">
+    <div className="relative bg-gray-900 overflow-hidden min-h-[420px] md:min-h-[540px]">
       {/* Blobs d'arrière-plan */}
       <div className="absolute inset-0 pointer-events-none">
         <div className="absolute top-0 -left-8 w-96 h-96 bg-orange-700/20 rounded-full blur-3xl" />
@@ -84,7 +84,7 @@ export const Hero = ({ onNavigate }: { onNavigate: (page: string) => void }) => 
       </div>
 
       {/* Contenu texte */}
-      <div className="container mx-auto px-4 relative z-10 pt-16 pb-12 md:pt-24 md:pb-20">
+      <div className="container mx-auto px-4 relative z-10 pt-10 pb-10 md:pt-24 md:pb-20">
         <div className="lg:max-w-[54%]">
           {/* Badge arrivage */}
           <motion.div
@@ -153,7 +153,7 @@ export const Hero = ({ onNavigate }: { onNavigate: (page: string) => void }) => 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.7 }}
-            className="grid grid-cols-2 md:grid-cols-4 gap-5 pb-2"
+            className="flex gap-5 pb-2 overflow-x-auto md:grid md:grid-cols-4 md:overflow-visible scrollbar-none"
           >
             {[
               { icon: ShieldCheck, label: "Produits Testés",   sub: "Garantie 12 mois" },
@@ -161,9 +161,9 @@ export const Hero = ({ onNavigate }: { onNavigate: (page: string) => void }) => 
               { icon: Package,     label: "Livraison 48h",     sub: "Colissimo & Relay" },
               { icon: RotateCcw,   label: "Retours 14j",       sub: "Satisfait ou remboursé" },
             ].map((item, idx) => (
-              <div key={idx} className="flex flex-col gap-1.5">
+              <div key={idx} className="flex flex-col gap-1.5 shrink-0 min-w-[110px] md:min-w-0">
                 <item.icon className="text-orange-500" size={20} />
-                <p className="text-white font-bold text-sm">{item.label}</p>
+                <p className="text-white font-bold text-sm whitespace-nowrap md:whitespace-normal">{item.label}</p>
                 <p className="text-gray-500 text-xs">{item.sub}</p>
               </div>
             ))}

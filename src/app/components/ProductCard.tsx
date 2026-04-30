@@ -209,12 +209,12 @@ export const ProductCard = ({
           <button
             onClick={isOutOfStock ? undefined : onAction}
             disabled={isOutOfStock}
-            className={`p-2 rounded-xl transition-all ${
+            className={`p-3 rounded-xl transition-all min-w-[44px] min-h-[44px] flex items-center justify-center ${
               isOutOfStock
                 ? "bg-gray-200 text-gray-400 cursor-not-allowed"
                 : product.type === "auction"
-                ? "bg-orange-600 text-white hover:bg-orange-700"
-                : "bg-blue-600 text-white hover:bg-blue-700"
+                ? "bg-orange-600 text-white hover:bg-orange-700 active:bg-orange-800"
+                : "bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800"
             }`}
           >
             {product.type === "auction" ? <Gavel size={18} /> : <Zap size={18} />}

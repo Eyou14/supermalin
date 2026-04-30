@@ -285,7 +285,7 @@ export const RootLayout: React.FC = () => {
 
           <DevBanner />
 
-          <main className="flex-1">
+          <main className="flex-1 pb-14 md:pb-0">
             <Outlet />
           </main>
 
