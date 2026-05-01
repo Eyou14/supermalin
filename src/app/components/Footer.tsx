@@ -1,4 +1,4 @@
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Mail, Phone, MapPin, Zap, ArrowLeftRight } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Logo } from "./Logo";
 
@@ -9,17 +9,17 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
     if (onNavigate) {
       onNavigate(page);
     } else {
-      // Fallback direct navigation
       const routes: Record<string, string> = {
         'home': '/',
         'shop': '/boutique',
-        'auctions': '/encheres',
         'profile': '/profil',
         'contact': '/contact',
         'cgv': '/cgv',
         'mentions': '/mentions-legales',
         'privacy': '/politique-confidentialite',
         'returns': '/politique-retours',
+        'nouveaux-arrivages': '/nouveaux-arrivages',
+        'depot-vente': '/depot-vente',
       };
       navigate(routes[page] || '/');
     }
@@ -44,14 +44,17 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
               {[
                 { label: 'Accueil', id: 'home' },
                 { label: 'Boutique', id: 'shop' },
+                { label: 'Nouveaux Arrivages', id: 'nouveaux-arrivages', icon: Zap },
+                { label: 'Vendre / Dépôt-Vente', id: 'depot-vente', icon: ArrowLeftRight },
                 { label: 'Mon Compte', id: 'profile' },
                 { label: 'Contact', id: 'contact' }
               ].map((item) => (
                 <li key={item.id}>
-                  <button 
+                  <button
                     onClick={() => handleNavigate(item.id)}
-                    className="text-gray-500 hover:text-orange-600 text-sm transition-colors cursor-pointer"
+                    className="flex items-center gap-1.5 text-gray-500 hover:text-orange-600 text-sm transition-colors cursor-pointer"
                   >
+                    {item.icon && <item.icon size={13} className="text-orange-400" />}
                     {item.label}
                   </button>
                 </li>
@@ -70,7 +73,7 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
                 { label: 'Retours', id: 'returns' }
               ].map((item) => (
                 <li key={item.id}>
-                  <button 
+                  <button
                     onClick={() => handleNavigate(item.id)}
                     className="text-gray-500 hover:text-orange-600 text-sm transition-colors cursor-pointer"
                   >
@@ -94,12 +97,16 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
               <li className="flex items-start gap-3">
                 <Phone size={18} className="text-orange-500 mt-0.5" />
                 <a href="tel:0977454776" className="text-gray-500 hover:text-orange-600 text-sm transition-colors">
-                  0977454776
+                  09 77 45 47 76
                 </a>
               </li>
               <li className="flex items-start gap-3">
                 <MapPin size={18} className="text-orange-500 mt-0.5 shrink-0" />
-                <span className="text-gray-500 text-sm">Chauconin-Neufmontiers (77)<br/>Seine-et-Marne — Île-de-France</span>
+                <span className="text-gray-500 text-sm">
+                  Chauconin-Neufmontiers (77)<br />
+                  Seine-et-Marne — Île-de-France<br />
+                  <span className="text-xs text-gray-400 italic">Retrait sur place uniquement</span>
+                </span>
               </li>
             </ul>
           </div>
@@ -109,13 +116,13 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
         <div className="mb-12 flex items-center justify-center gap-8 p-6 bg-blue-50 rounded-2xl">
           <img src="/logo-hdf.svg" alt="Région Hauts-de-France" className="h-16 w-auto" />
           <p className="text-sm text-gray-700 max-w-md">
-            SuperMalin est financé par la <strong>Région Hauts-de-France</strong> dans le cadre de son développement.
+            SuperMalin bénéficie du soutien de la <strong>Région Hauts-de-France</strong> dans le cadre de son programme d'aide au développement des entreprises.
           </p>
         </div>
 
         <div className="border-t border-gray-100 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
           <p className="text-gray-400 text-xs">
-            © 2026 SuperMalin SAS. Tous droits réservés. • SIRET: 92822322100013
+            © 2026 MounAchatMalin SAS — SuperMalin. Tous droits réservés. • SIRET : 928 223 221 00013
           </p>
           <div className="flex items-center gap-6">
             <span className="text-xs text-gray-400">Paiement sécurisé par</span>

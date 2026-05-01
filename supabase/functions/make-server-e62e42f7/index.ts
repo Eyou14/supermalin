@@ -505,7 +505,7 @@ const setupRoutes = (router: Hono) => {
                   
                   <div style="text-align: center; margin-top: 30px;">
                     <p style="color: #9ca3af; font-size: 12px;">L'équipe SuperMalin vous remercie de votre confiance 🧡</p>
-                    <p style="color: #9ca3af; font-size: 11px; margin-top: 10px;">SuperMalin SAS - SIRET: 92822322100013</p>
+                    <p style="color: #9ca3af; font-size: 11px; margin-top: 10px;">MounAchatMalin SAS — SuperMalin • SIRET : 928 223 221 00013</p>
                   </div>
                 </div>
               </div>
@@ -603,7 +603,7 @@ const setupRoutes = (router: Hono) => {
                 <p style="font-size:13px;color:#9ca3af;margin-top:24px;">Une question ? Contactez-nous à <a href="mailto:contact@supermalin.fr" style="color:#f97316;">contact@supermalin.fr</a></p>
               </div>
               <div style="text-align:center;padding:16px;">
-                <p style="color:#9ca3af;font-size:11px;margin:0;">MounAchatMalin SAS — SuperMalin — SIRET 928 223 221 00013</p>
+                <p style="color:#9ca3af;font-size:11px;margin:0;">MounAchatMalin SAS — SuperMalin • SIRET : 928 223 221 00013</p>
               </div>
             </div>
           `,

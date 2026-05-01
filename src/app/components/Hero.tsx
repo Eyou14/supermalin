@@ -1,18 +1,20 @@
 import React, { useState, useEffect } from "react";
-import { ArrowRight, ShieldCheck, Zap, Package, RotateCcw, Cpu, Shirt, Home, Dumbbell } from "lucide-react";
+import { ArrowRight, ShieldCheck, Zap, Package, RotateCcw, Cpu, Shirt, Home, Headphones, Gamepad2 } from "lucide-react";
 import { motion } from "motion/react";
+import { useNavigate } from "react-router";
 import { projectId, publicAnonKey } from '/utils/supabase/info';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
 const CATEGORIES = [
-  { icon: Cpu,      label: "High-Tech",      color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
-  { icon: Home,     label: "Électroménager", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
-  { icon: Shirt,    label: "Mode",           color: "bg-pink-500/20 text-pink-300 border-pink-500/30" },
-  { icon: Dumbbell, label: "Sport",          color: "bg-green-500/20 text-green-300 border-green-500/30" },
+  { icon: Cpu,        label: "Téléphonie",   slug: "telephonie",   color: "bg-blue-500/20 text-blue-300 border-blue-500/30" },
+  { icon: Home,       label: "Informatique", slug: "informatique", color: "bg-purple-500/20 text-purple-300 border-purple-500/30" },
+  { icon: Headphones, label: "Audio / Vidéo",slug: "audio-video",  color: "bg-pink-500/20 text-pink-300 border-pink-500/30" },
+  { icon: Gamepad2,   label: "Gaming",       slug: "gaming",       color: "bg-green-500/20 text-green-300 border-green-500/30" },
 ];
 
 export const Hero = ({ onNavigate }: { onNavigate: (page: string) => void }) => {
+  const navigate = useNavigate();
   const [bannerMessages, setBannerMessages] = useState({
     message1: 'Derniers arrivages : +250 produits cette semaine',
     message2: '120 MacBook Pro M3'
@@ -179,7 +181,7 @@ export const Hero = ({ onNavigate }: { onNavigate: (page: string) => void }) => 
             {CATEGORIES.map((cat) => (
               <button
                 key={cat.label}
-                onClick={() => onNavigate('shop')}
+                onClick={() => navigate(`/boutique?categorie=${cat.slug}`)}
                 className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold border ${cat.color} transition-all hover:scale-105`}
               >
                 <cat.icon size={12} />
