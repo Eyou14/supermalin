@@ -54,6 +54,10 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
   const [selectedRelay, setSelectedRelay] = useState<string | null>(null);
   const [useWallet, setUseWallet] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [promoCode, setPromoCode] = useState('');
+  const [appliedPromo, setAppliedPromo] = useState<{ code: string; discount: number; message: string } | null>(null);
+  const [promoError, setPromoError] = useState('');
+  const [isValidatingPromo, setIsValidatingPromo] = useState(false);
   const [postalCode, setPostalCode] = useState(profile?.zipCode || '');
   const [city, setCity] = useState(profile?.city || '');
   const [address, setAddress] = useState(profile?.street || '');
@@ -173,8 +177,34 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
   const safeTotal = Number(total) || 0;
   const safeWalletBalance = Number(walletBalance) || 0;
   
+  const promoDiscount = appliedPromo?.discount ?? 0;
   const currentTotal = useWallet ? Math.max(0, safeTotal - safeWalletBalance) : safeTotal;
-  const finalTotal = currentTotal + shippingCost;
+  const finalTotal = Math.max(0, currentTotal + shippingCost - promoDiscount);
+
+  const handleValidatePromo = async () => {
+    if (!promoCode.trim()) return;
+    setIsValidatingPromo(true);
+    setPromoError('');
+    try {
+      const response = await fetch(`${API_URL}/promo/validate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({ code: promoCode.trim(), total: currentTotal + shippingCost }),
+      });
+      const data = await response.json();
+      if (data.valid) {
+        setAppliedPromo({ code: data.code, discount: data.discount, message: data.message });
+        setPromoCode('');
+        toast.success(data.message);
+      } else {
+        setPromoError(data.message);
+      }
+    } catch {
+      setPromoError('Erreur de connexion');
+    } finally {
+      setIsValidatingPromo(false);
+    }
+  };
 
   const handleNext = async () => {
     if (step === 'shipping') {
@@ -522,6 +552,52 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                        </button>
                     </div>
                   </div>
+                  {/* ── Code promo ── */}
+                  <div className="mb-4">
+                    {appliedPromo ? (
+                      <div className="flex items-center justify-between p-4 bg-green-50 border border-green-200 rounded-2xl">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xl">🎉</span>
+                          <div>
+                            <p className="font-black text-green-800 text-sm">{appliedPromo.code}</p>
+                            <p className="text-xs text-green-600">-{appliedPromo.discount.toFixed(2)}€ appliqués</p>
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => setAppliedPromo(null)}
+                          className="text-green-600 hover:text-red-500 text-xs font-bold transition-colors"
+                        >
+                          Retirer
+                        </button>
+                      </div>
+                    ) : (
+                      <div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={promoCode}
+                            onChange={(e) => { setPromoCode(e.target.value.toUpperCase()); setPromoError(''); }}
+                            onKeyDown={(e) => e.key === 'Enter' && handleValidatePromo()}
+                            placeholder="Code promo (ex: BIENVENUE)"
+                            className="flex-1 p-3 rounded-xl border border-gray-200 focus:border-orange-500 focus:outline-none text-sm font-mono tracking-widest uppercase"
+                          />
+                          <button
+                            onClick={handleValidatePromo}
+                            disabled={isValidatingPromo || !promoCode.trim()}
+                            className="px-5 py-3 bg-gray-900 text-white rounded-xl font-bold text-sm hover:bg-gray-700 transition-all disabled:opacity-40 shrink-0"
+                          >
+                            {isValidatingPromo ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                            ) : 'Appliquer'}
+                          </button>
+                        </div>
+                        {promoError && (
+                          <p className="text-red-500 text-xs mt-2 font-medium">{promoError}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   {finalTotal > 0 ? (
                     <div className="space-y-4">
                       <div className="p-4 bg-white border border-gray-200 rounded-xl">
@@ -580,6 +656,12 @@ export const CheckoutTunnel: React.FC<CheckoutTunnelProps> = ({
                   <div className="flex justify-between text-sm text-orange-400">
                     <span>Portefeuille</span>
                     <span>-{Math.min(safeTotal, safeWalletBalance).toFixed(2)}€</span>
+                  </div>
+                )}
+                {appliedPromo && (
+                  <div className="flex justify-between text-sm text-green-400">
+                    <span>🎉 {appliedPromo.code}</span>
+                    <span>-{appliedPromo.discount.toFixed(2)}€</span>
                   </div>
                 )}
                 {!isFreeShipping && amountToFreeShipping > 0 && shippingCost > 0 && (

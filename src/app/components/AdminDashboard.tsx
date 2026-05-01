@@ -29,6 +29,9 @@ import {
   Archive,
   BadgeCheck,
   PackageCheck,
+  Percent,
+  ToggleLeft,
+  ToggleRight,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -72,7 +75,7 @@ interface TransactionData {
 }
 
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'inventory' | 'users' | 'transactions' | 'orders' | 'customization' | 'arrivals'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'inventory' | 'users' | 'transactions' | 'orders' | 'customization' | 'arrivals' | 'promos'>('requests');
   const [requests, setRequests] = useState<TradeRequest[]>([]);
   const [inventory, setInventory] = useState<Product[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -95,6 +98,86 @@ export const AdminDashboard = () => {
     bannerMessage2: '120 MacBook Pro M3',
   });
   const [isSavingSections, setIsSavingSections] = useState(false);
+
+  // ── Codes Promo ────────────────────────────────────────────────────────────
+  const [promos, setPromos] = useState<any[]>([]);
+  const [isCreatingPromo, setIsCreatingPromo] = useState(false);
+  const [newPromo, setNewPromo] = useState({
+    code: '',
+    type: 'fixed' as 'fixed' | 'percent',
+    amount: '',
+    min_order: '',
+    max_uses: '',
+    expires_at: '',
+  });
+
+  const fetchPromos = async () => {
+    try {
+      const res = await fetch(`${API_URL}/admin/promos`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      if (res.ok) setPromos(await res.json());
+    } catch (e) {
+      console.error('Error fetching promos:', e);
+    }
+  };
+
+  const handleCreatePromo = async () => {
+    if (!newPromo.code || !newPromo.amount) {
+      toast.error('Code et montant obligatoires');
+      return;
+    }
+    setIsCreatingPromo(true);
+    try {
+      const res = await fetch(`${API_URL}/admin/promos`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({
+          ...newPromo,
+          amount: Number(newPromo.amount),
+          min_order: Number(newPromo.min_order) || 0,
+          max_uses: newPromo.max_uses ? Number(newPromo.max_uses) : null,
+          expires_at: newPromo.expires_at || null,
+        }),
+      });
+      const data = await res.json();
+      if (data.error) { toast.error(data.error); return; }
+      setPromos((prev) => [...prev, data]);
+      setNewPromo({ code: '', type: 'fixed', amount: '', min_order: '', max_uses: '', expires_at: '' });
+      toast.success(`Code ${data.code} créé avec succès !`);
+    } catch (e) {
+      toast.error('Erreur lors de la création');
+    } finally {
+      setIsCreatingPromo(false);
+    }
+  };
+
+  const handleTogglePromo = async (id: string, current: boolean) => {
+    try {
+      await fetch(`${API_URL}/admin/promos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
+        body: JSON.stringify({ is_active: !current }),
+      });
+      setPromos((prev) => prev.map((p) => p.id === id ? { ...p, is_active: !current } : p));
+    } catch (e) {
+      toast.error('Erreur de mise à jour');
+    }
+  };
+
+  const handleDeletePromo = async (id: string, code: string) => {
+    if (!confirm(`Supprimer le code ${code} ?`)) return;
+    try {
+      await fetch(`${API_URL}/admin/promos/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      setPromos((prev) => prev.filter((p) => p.id !== id));
+      toast.success('Code supprimé');
+    } catch (e) {
+      toast.error('Erreur de suppression');
+    }
+  };
 
   // ── Arrivages ──────────────────────────────────────────────────────────────
   interface ArrivalLot {
@@ -362,16 +445,14 @@ export const AdminDashboard = () => {
   };
 
   useEffect(() => {
-    if (activeTab === 'arrivals') {
-      loadArrivals();
-      return;
-    }
+    if (activeTab === 'arrivals') { loadArrivals(); return; }
+    if (activeTab === 'promos') { fetchPromos(); return; }
     fetchData();
     if (activeTab === 'customization') loadSectionsConfig();
   }, [activeTab]);
 
   const fetchData = async () => {
-    if (activeTab === 'customization' || activeTab === 'arrivals') return;
+    if (activeTab === 'customization' || activeTab === 'arrivals' || activeTab === 'promos') return;
     setIsLoading(true);
     try {
       let endpoint = '';
@@ -481,6 +562,7 @@ export const AdminDashboard = () => {
             { id: 'orders', label: 'Commandes', icon: LayoutDashboard },
             { id: 'users', label: 'Utilisateurs', icon: Users },
             { id: 'transactions', label: 'Transactions', icon: CreditCard },
+            { id: 'promos', label: 'Codes Promo', icon: Percent },
             { id: 'customization', label: 'Personnalisation', icon: Tag },
           ].map((tab) => (
             <button
@@ -518,6 +600,7 @@ export const AdminDashboard = () => {
               {activeTab === 'orders' && 'Gestion des Commandes'}
               {activeTab === 'customization' && 'Personnalisation du Site'}
               {activeTab === 'arrivals' && 'Gestion des Arrivages'}
+              {activeTab === 'promos' && 'Codes Promo'}
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -769,6 +852,156 @@ export const AdminDashboard = () => {
                     {isSavingSections ? 'Sauvegarde...' : 'Enregistrer les messages'}
                   </button>
                 </div>
+              </div>
+            </div>
+          ) : activeTab === 'promos' ? (
+            <div className="max-w-3xl space-y-6">
+              {/* Formulaire création */}
+              <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 space-y-5">
+                <h3 className="font-black text-gray-900 flex items-center gap-2">
+                  <Percent size={18} className="text-orange-600" /> Créer un code promo
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Code *</label>
+                    <input
+                      type="text"
+                      placeholder="BIENVENUE"
+                      value={newPromo.code}
+                      onChange={(e) => setNewPromo(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20 font-mono tracking-widest uppercase"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Type de remise *</label>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setNewPromo(p => ({ ...p, type: 'fixed' }))}
+                        className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all ${
+                          newPromo.type === 'fixed' ? 'border-orange-600 bg-orange-50 text-orange-700' : 'border-gray-100 text-gray-500'
+                        }`}
+                      >
+                        Montant fixe €
+                      </button>
+                      <button
+                        onClick={() => setNewPromo(p => ({ ...p, type: 'percent' }))}
+                        className={`flex-1 py-3 rounded-xl text-sm font-bold border-2 transition-all ${
+                          newPromo.type === 'percent' ? 'border-orange-600 bg-orange-50 text-orange-700' : 'border-gray-100 text-gray-500'
+                        }`}
+                      >
+                        Pourcentage %
+                      </button>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">
+                      {newPromo.type === 'fixed' ? 'Remise (€) *' : 'Remise (%) *'}
+                    </label>
+                    <input
+                      type="number"
+                      placeholder={newPromo.type === 'fixed' ? '5' : '10'}
+                      value={newPromo.amount}
+                      onChange={(e) => setNewPromo(p => ({ ...p, amount: e.target.value }))}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Commande min (€)</label>
+                    <input
+                      type="number"
+                      placeholder="0"
+                      value={newPromo.min_order}
+                      onChange={(e) => setNewPromo(p => ({ ...p, min_order: e.target.value }))}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Utilisations max</label>
+                    <input
+                      type="number"
+                      placeholder="Illimité"
+                      value={newPromo.max_uses}
+                      onChange={(e) => setNewPromo(p => ({ ...p, max_uses: e.target.value }))}
+                      className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[10px] font-black uppercase text-gray-400 block mb-1">Date d'expiration (optionnel)</label>
+                  <input
+                    type="date"
+                    value={newPromo.expires_at}
+                    onChange={(e) => setNewPromo(p => ({ ...p, expires_at: e.target.value }))}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
+                  />
+                </div>
+                <button
+                  onClick={handleCreatePromo}
+                  disabled={isCreatingPromo}
+                  className="bg-orange-600 text-white px-8 py-3 rounded-xl font-black text-sm hover:bg-orange-700 transition-all disabled:opacity-50 flex items-center gap-2"
+                >
+                  <Plus size={16} /> {isCreatingPromo ? 'Création...' : 'Créer le code'}
+                </button>
+              </div>
+
+              {/* Liste des codes existants */}
+              <div className="space-y-3">
+                <h3 className="font-black text-gray-900 text-sm uppercase tracking-wider">
+                  Codes actifs ({promos.length})
+                </h3>
+                {promos.length === 0 ? (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-8 text-center text-gray-400 text-sm">
+                    Aucun code promo créé pour l'instant
+                  </div>
+                ) : (
+                  promos.map((promo) => (
+                    <div key={promo.id} className="bg-white rounded-2xl border border-gray-100 p-5 flex items-center gap-4 shadow-sm">
+                      <div className={`w-2 h-2 rounded-full shrink-0 ${promo.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 flex-wrap">
+                          <span className="font-black text-gray-900 font-mono tracking-widest text-sm">{promo.code}</span>
+                          <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                            promo.type === 'percent' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'
+                          }`}>
+                            {promo.type === 'percent' ? `-${promo.amount}%` : `-${promo.amount}€`}
+                          </span>
+                          {promo.min_order > 0 && (
+                            <span className="text-[10px] text-gray-400">min {promo.min_order}€</span>
+                          )}
+                          {promo.expires_at && (
+                            <span className="text-[10px] text-gray-400">
+                              expire le {new Date(promo.expires_at).toLocaleDateString('fr-FR')}
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {promo.uses} utilisation{promo.uses !== 1 ? 's' : ''}
+                          {promo.max_uses ? ` / ${promo.max_uses} max` : ' (illimité)'}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3 shrink-0">
+                        <button
+                          onClick={() => handleTogglePromo(promo.id, promo.is_active)}
+                          className="transition-colors"
+                          title={promo.is_active ? 'Désactiver' : 'Activer'}
+                        >
+                          {promo.is_active
+                            ? <ToggleRight size={28} className="text-green-500 hover:text-gray-400" />
+                            : <ToggleLeft size={28} className="text-gray-300 hover:text-green-500" />
+                          }
+                        </button>
+                        <button
+                          onClick={() => handleDeletePromo(promo.id, promo.code)}
+                          className="p-2 text-gray-300 hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           ) : activeTab === 'arrivals' ? (
