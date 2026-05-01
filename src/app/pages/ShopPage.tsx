@@ -36,8 +36,26 @@ export const ShopPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { addToCart, wishlist, toggleWishlist } = useContext(AppContext);
   
-  const [products, setProducts] = useState<Product[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [products, setProducts] = useState<Product[]>(() => {
+    try {
+      const cached = localStorage.getItem('supermalin_products_cache');
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Array.isArray(data) && data.length > 0 && Date.now() - ts < 10 * 60 * 1000) return data;
+      }
+    } catch { /* ignore */ }
+    return [];
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    try {
+      const cached = localStorage.getItem('supermalin_products_cache');
+      if (cached) {
+        const { data, ts } = JSON.parse(cached);
+        if (Array.isArray(data) && data.length > 0 && Date.now() - ts < 10 * 60 * 1000) return false;
+      }
+    } catch { /* ignore */ }
+    return true;
+  });
   const [showFilters, setShowFilters] = useState(false);
   
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('categorie') || '');
@@ -59,25 +77,33 @@ export const ShopPage: React.FC = () => {
   }, [searchParams]);
 
   const fetchProducts = async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
     try {
-      setIsLoading(true);
       const response = await fetch(`${API_URL}/products`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       if (!response.ok) throw new Error(`Server error ${response.status}`);
       const data = await response.json();
       if (Array.isArray(data) && data.length > 0) {
         setProducts(data);
+        setIsLoading(false);
+        try {
+          localStorage.setItem('supermalin_products_cache', JSON.stringify({ data, ts: Date.now() }));
+        } catch { /* ignore quota */ }
       } else {
-        setProducts(MOCK_PRODUCTS);
+        if (products.length === 0) setProducts(MOCK_PRODUCTS);
+        setIsLoading(false);
       }
     } catch (error) {
+      clearTimeout(timeout);
       console.error("Fetch failed:", error);
-      setProducts(MOCK_PRODUCTS);
-    } finally {
+      if (products.length === 0) setProducts(MOCK_PRODUCTS);
       setIsLoading(false);
     }
   };
