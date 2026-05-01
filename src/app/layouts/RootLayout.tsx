@@ -120,21 +120,21 @@ export const RootLayout: React.FC = () => {
 
     if (response.ok) {
       const data = await response.json();
-      const role = data.role?.toLowerCase?.() || ‘user’;
+      const role = data.role?.toLowerCase?.() || 'user';
       setUserProfile(data);
       setWalletBalance(Number(data.balance) || 0);
-      setIsAdmin(role === ‘admin’);
+      setIsAdmin(role === 'admin');
       return;
     }
 
-    // Ne jamais écraser un admin si le profil n’existe pas dans le KV store
-    console.warn(‘⚠️ Profil absent du KV store, création légère sans override du rôle’);
+    // Ne jamais écraser un admin si le profil n'existe pas dans le KV store
+    console.warn('⚠️ Profil absent du KV store, création légère sans override du rôle');
     const controller2 = new AbortController();
     const timeout2 = setTimeout(() => controller2.abort(), 4000);
     await fetch(`${API_URL}/profile/${userId}`, {
-      method: ‘PUT’,
+      method: 'PUT',
       headers: {
-        ‘Content-Type’: ‘application/json’,
+        'Content-Type': 'application/json',
         Authorization: `Bearer ${publicAnonKey}`,
       },
       body: JSON.stringify({ userId }),
@@ -142,7 +142,7 @@ export const RootLayout: React.FC = () => {
     }).finally(() => clearTimeout(timeout2));
   } catch (error) {
     clearTimeout(timeout);
-    console.error(‘❌ Error fetching profile:’, error);
+    console.error('❌ Error fetching profile:', error);
     setIsAdmin(false);
   }
 };
