@@ -6,11 +6,7 @@ export const DevTools: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
 
   // Ne pas afficher en production
-  if (
-    import.meta.env.PROD ||
-    window.location.hostname === 'supermalin.fr' ||
-    window.location.hostname === 'www.supermalin.fr'
-  ) {
+  if (window.location.hostname === 'supermalin.fr' || window.location.hostname === 'www.supermalin.fr') {
     return null;
   }
 

@@ -32,8 +32,6 @@ import {
   Percent,
   ToggleLeft,
   ToggleRight,
-  Smartphone,
-  PhoneCall,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { toast } from 'sonner';
@@ -77,7 +75,7 @@ interface TransactionData {
 }
 
 export const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState<'requests' | 'inventory' | 'users' | 'transactions' | 'orders' | 'customization' | 'arrivals' | 'promos' | 'depot-vente'>('requests');
+  const [activeTab, setActiveTab] = useState<'requests' | 'inventory' | 'users' | 'transactions' | 'orders' | 'customization' | 'arrivals' | 'promos'>('requests');
   const [requests, setRequests] = useState<TradeRequest[]>([]);
   const [inventory, setInventory] = useState<Product[]>([]);
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -180,53 +178,6 @@ export const AdminDashboard = () => {
       toast.error('Erreur de suppression');
     }
   };
-
-  // ── Dépôt-Vente ───────────────────────────────────────────────────────────
-  const [depotVenteList, setDepotVenteList] = useState<any[]>([]);
-  const [isDepotVenteLoading, setIsDepotVenteLoading] = useState(false);
-
-  const fetchDepotVente = async () => {
-    setIsDepotVenteLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/admin/depot-vente`, {
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      if (res.ok) setDepotVenteList(await res.json());
-    } catch (e) {
-      toast.error('Erreur chargement dépôt-vente');
-    } finally {
-      setIsDepotVenteLoading(false);
-    }
-  };
-
-  const handleDepotVenteStatus = async (id: string, status: string) => {
-    try {
-      await fetch(`${API_URL}/admin/depot-vente/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${publicAnonKey}` },
-        body: JSON.stringify({ status }),
-      });
-      setDepotVenteList((prev) => prev.map((s) => s.id === id ? { ...s, status } : s));
-      toast.success('Statut mis à jour');
-    } catch {
-      toast.error('Erreur de mise à jour');
-    }
-  };
-
-  const handleDepotVenteDelete = async (id: string) => {
-    if (!confirm('Supprimer cette demande ?')) return;
-    try {
-      await fetch(`${API_URL}/admin/depot-vente/${id}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${publicAnonKey}` },
-      });
-      setDepotVenteList((prev) => prev.filter((s) => s.id !== id));
-      toast.success('Demande supprimée');
-    } catch {
-      toast.error('Erreur de suppression');
-    }
-  };
-  // ──────────────────────────────────────────────────────────────────────────
 
   // ── Arrivages ──────────────────────────────────────────────────────────────
   interface ArrivalLot {
@@ -496,13 +447,12 @@ export const AdminDashboard = () => {
   useEffect(() => {
     if (activeTab === 'arrivals') { loadArrivals(); return; }
     if (activeTab === 'promos') { fetchPromos(); return; }
-    if (activeTab === 'depot-vente') { fetchDepotVente(); return; }
     fetchData();
     if (activeTab === 'customization') loadSectionsConfig();
   }, [activeTab]);
 
   const fetchData = async () => {
-    if (activeTab === 'customization' || activeTab === 'arrivals' || activeTab === 'promos' || activeTab === 'depot-vente') return;
+    if (activeTab === 'customization' || activeTab === 'arrivals' || activeTab === 'promos') return;
     setIsLoading(true);
     try {
       let endpoint = '';
@@ -613,7 +563,6 @@ export const AdminDashboard = () => {
             { id: 'users', label: 'Utilisateurs', icon: Users },
             { id: 'transactions', label: 'Transactions', icon: CreditCard },
             { id: 'promos', label: 'Codes Promo', icon: Percent },
-            { id: 'depot-vente', label: 'Dépôt-Vente', icon: Smartphone },
             { id: 'customization', label: 'Personnalisation', icon: Tag },
           ].map((tab) => (
             <button
@@ -652,7 +601,6 @@ export const AdminDashboard = () => {
               {activeTab === 'customization' && 'Personnalisation du Site'}
               {activeTab === 'arrivals' && 'Gestion des Arrivages'}
               {activeTab === 'promos' && 'Codes Promo'}
-              {activeTab === 'depot-vente' && 'Dépôt-Vente'}
             </h1>
           </div>
           <div className="flex items-center gap-4">
@@ -1196,87 +1144,6 @@ export const AdminDashboard = () => {
                     </div>
                   ))}
                 </div>
-              )}
-            </div>
-          ) : activeTab === 'depot-vente' ? (
-            <div className="max-w-4xl space-y-4">
-              {isDepotVenteLoading ? (
-                <div className="flex items-center justify-center py-20">
-                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-orange-600" />
-                </div>
-              ) : depotVenteList.length === 0 ? (
-                <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-12 text-center">
-                  <Smartphone size={40} className="text-gray-200 mx-auto mb-4" />
-                  <p className="font-bold text-gray-400">Aucune demande de dépôt-vente pour l'instant</p>
-                  <p className="text-xs text-gray-400 mt-1">Les demandes soumises via la page "Vendre" apparaîtront ici.</p>
-                </div>
-              ) : (
-                depotVenteList.map((s) => {
-                  const statusColors: Record<string, string> = {
-                    pending: 'bg-yellow-100 text-yellow-700',
-                    contacted: 'bg-blue-100 text-blue-700',
-                    accepted: 'bg-green-100 text-green-700',
-                    rejected: 'bg-red-100 text-red-700',
-                    sold: 'bg-purple-100 text-purple-700',
-                  };
-                  const statusLabels: Record<string, string> = {
-                    pending: 'En attente',
-                    contacted: 'Contacté',
-                    accepted: 'Accepté',
-                    rejected: 'Refusé',
-                    sold: 'Vendu',
-                  };
-                  return (
-                    <div key={s.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 flex items-start gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-orange-50 flex items-center justify-center shrink-0">
-                        <Smartphone size={22} className="text-orange-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <h4 className="font-black text-gray-900">{s.brand} {s.model}</h4>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border border-gray-200 text-gray-600 uppercase">{s.deviceType}</span>
-                          <span className={`text-[10px] font-black px-2 py-0.5 rounded-full uppercase ${statusColors[s.status] || 'bg-gray-100 text-gray-700'}`}>
-                            {statusLabels[s.status] || s.status}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-500 mb-2">
-                          <span>État : <strong className="text-gray-700">{s.condition}</strong></span>
-                          {s.askingPrice && <span>Prix souhaité : <strong className="text-gray-700">{s.askingPrice}€</strong></span>}
-                          <span>{new Date(s.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-                        </div>
-                        {s.description && <p className="text-xs text-gray-500 italic mb-2">"{s.description}"</p>}
-                        <div className="flex items-center gap-4 text-xs text-gray-600">
-                          <span className="font-bold">{s.name}</span>
-                          <a href={`mailto:${s.email}`} className="text-orange-600 hover:underline flex items-center gap-1">
-                            <Mail size={12} /> {s.email}
-                          </a>
-                          <a href={`tel:${s.phone}`} className="text-blue-600 hover:underline flex items-center gap-1">
-                            <PhoneCall size={12} /> {s.phone}
-                          </a>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-2 shrink-0">
-                        <select
-                          value={s.status}
-                          onChange={(e) => handleDepotVenteStatus(s.id, e.target.value)}
-                          className="text-xs border border-gray-200 rounded-lg px-2 py-1.5 font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
-                        >
-                          <option value="pending">En attente</option>
-                          <option value="contacted">Contacté</option>
-                          <option value="accepted">Accepté</option>
-                          <option value="rejected">Refusé</option>
-                          <option value="sold">Vendu</option>
-                        </select>
-                        <button
-                          onClick={() => handleDepotVenteDelete(s.id)}
-                          className="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all self-end"
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })
               )}
             </div>
           ) : activeTab === 'requests' ? (

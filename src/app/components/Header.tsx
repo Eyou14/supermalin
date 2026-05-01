@@ -1,5 +1,5 @@
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { Search, ShoppingCart, User, Gavel, LayoutGrid, Info, HelpCircle, Menu, X, Zap, ShieldCheck, Home, Store, ArrowLeftRight } from "lucide-react";
+import { Search, ShoppingCart, User, Gavel, LayoutGrid, Info, HelpCircle, Menu, X, Zap, ShieldCheck, Home, Store } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
@@ -38,7 +38,6 @@ export const Header = ({
     { id: 'home', label: 'Accueil', icon: LayoutGrid, path: '/' },
     { id: 'shop', label: 'Boutique', icon: ShoppingCart, path: '/boutique' },
     { id: 'nouveaux-arrivages', label: 'Arrivages', icon: Zap, path: '/nouveaux-arrivages' },
-    { id: 'depot-vente', label: 'Vendre', icon: ArrowLeftRight, path: '/depot-vente' },
     { id: 'contact', label: 'Contact', icon: Info, path: '/contact' },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: ShieldCheck, path: '/admin' }] : []),
   ];

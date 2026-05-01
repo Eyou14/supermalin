@@ -21,7 +21,6 @@ import { PromoteAdminPage } from "./pages/PromoteAdminPage";
 import { AdminLoginPage } from "./pages/AdminLoginPage";
 import { DebugAdminPage } from "./pages/DebugAdminPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
-import { DepotVentePage } from "./pages/DepotVentePage";
 
 export const router = createBrowserRouter([
   {
@@ -44,7 +43,6 @@ export const router = createBrowserRouter([
       { path: "politique-confidentialite", Component: PolitiqueConfidentialitePage },
       { path: "politique-retours", Component: PolitiqueRetoursPage },
       { path: "contact", Component: ContactPage },
-      { path: "depot-vente", Component: DepotVentePage },
       { path: "*", Component: NotFoundPage },
     ],
   },

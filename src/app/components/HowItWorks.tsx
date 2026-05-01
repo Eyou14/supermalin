@@ -6,7 +6,7 @@ export const HowItWorks = () => {
   const steps = [
     {
       title: "Trouvez votre pépite",
-      description: "Explorez notre catalogue multi-catégories : High-Tech, Électroménager, Mode, Maison et bien plus. Chaque produit est décrit avec précision : état, photos réelles, prix transparent.",
+      description: "Explorez notre catalogue d'articles High-Tech et multimédia. Chaque produit est décrit avec précision : état, photos réelles, prix transparent.",
       icon: Search,
       color: "bg-blue-100 text-blue-600"
     },
