@@ -245,6 +245,8 @@ export const RootLayout: React.FC = () => {
       privacy: '/politique-confidentialite',
       returns: '/politique-retours',
       contact: '/contact',
+      'nouveaux-arrivages': '/nouveaux-arrivages',
+      'depot-vente': '/depot-vente',
     };
 
     navigate(routes[page] || '/');

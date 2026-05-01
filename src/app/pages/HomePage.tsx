@@ -34,14 +34,18 @@ export const HomePage: React.FC = () => {
   }, []);
 
   const fetchProducts = async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
     try {
       setIsLoading(true);
       const response = await fetch(`${API_URL}/products`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       if (!response.ok) throw new Error(`Server error ${response.status}`);
       const data = await response.json();
       if (Array.isArray(data) && data.length > 0) {
@@ -50,6 +54,7 @@ export const HomePage: React.FC = () => {
         setProducts(MOCK_PRODUCTS);
       }
     } catch (error) {
+      clearTimeout(timeout);
       console.error("Fetch failed:", error);
       setProducts(MOCK_PRODUCTS);
     } finally {
