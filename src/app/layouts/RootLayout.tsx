@@ -109,14 +109,10 @@ export const RootLayout: React.FC = () => {
   };
 
  const fetchUserProfile = async (userId: string) => {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 6000);
   try {
     const response = await fetch(`${API_URL}/profile/${userId}`, {
       headers: { Authorization: `Bearer ${publicAnonKey}` },
-      signal: controller.signal,
     });
-    clearTimeout(timeout);
 
     if (response.ok) {
       const data = await response.json();
@@ -127,7 +123,7 @@ export const RootLayout: React.FC = () => {
       return;
     }
 
-    // Ne jamais écraser un admin si le profil n'existe pas dans le KV store
+    // Ne jamais écraser un admin si le profil n’existe pas dans le KV store
     console.warn('⚠️ Profil absent du KV store, création légère sans override du rôle');
     await fetch(`${API_URL}/profile/${userId}`, {
       method: 'PUT',
