@@ -62,23 +62,10 @@ export const CheckoutPage: React.FC = () => {
 
       if (response.ok) {
         const order = await response.json();
-        console.log('✅ Commande créée:', order);
-        
-        // Si le wallet a été utilisé, déduire le montant
-        if (walletUsed > 0 && user?.id) {
-          const newBalance = walletBalance - walletUsed;
-          console.log(`💰 Mise à jour du solde: ${walletBalance}€ → ${newBalance}€`);
-          
-          await fetch(`${API_URL}/profile/${user.id}`, {
-            method: 'PUT',
-            headers: { 
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${publicAnonKey}` 
-            },
-            body: JSON.stringify({ balance: newBalance })
-          });
-        }
-        
+
+        // NOTE: La déduction du wallet est gérée côté serveur dans l'edge function (/orders)
+        // Ne pas déduire ici pour éviter le double débit.
+
         clearCart();
         
         // Refresh user profile to update wallet balance

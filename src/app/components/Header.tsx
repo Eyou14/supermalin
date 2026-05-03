@@ -1,5 +1,5 @@
 import { ImageWithFallback } from "./figma/ImageWithFallback";
-import { Search, ShoppingCart, User, Gavel, LayoutGrid, Info, HelpCircle, Menu, X, Zap, ShieldCheck, Home, Store } from "lucide-react";
+import { Search, ShoppingCart, User, Gavel, LayoutGrid, Info, HelpCircle, Menu, X, Zap, ShieldCheck } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { motion, AnimatePresence } from "motion/react";
@@ -115,17 +115,7 @@ export const Header = ({
     };
   }, []);
 
-  const isCartPage = location.pathname.startsWith('/panier');
-
-  const bottomNavItems = [
-    { id: 'home', label: 'Accueil', icon: Home, path: '/' },
-    { id: 'shop', label: 'Boutique', icon: Store, path: '/boutique' },
-    { id: 'cart', label: 'Panier', icon: ShoppingCart, path: '/panier', badge: cartCount },
-    { id: 'profile', label: 'Compte', icon: User, path: '/profil' },
-  ];
-
   return (
-    <>
     <header className="sticky top-0 z-50 bg-white border-b border-gray-100 shadow-sm">
       <div className="container mx-auto px-4 h-16 flex items-center justify-between gap-4">
         {/* Logo */}
@@ -149,6 +139,17 @@ export const Header = ({
             </button>
           ))}
           
+          {/* Admin Badge - Visible seulement pour les admins */}
+          {isAdmin && (
+            <button
+              onClick={() => navigate('/admin')}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-orange-600 to-orange-500 text-white rounded-full text-xs font-bold shadow-lg hover:shadow-xl transition-all hover:scale-105"
+              title="Accès Administration"
+            >
+              <ShieldCheck size={14} />
+              Admin
+            </button>
+          )}
         </nav>
 
         {/* Search - Desktop */}
@@ -181,7 +182,30 @@ export const Header = ({
         </div>
 
         <div className="flex items-center gap-3">
-          <button
+          {/* Bouton Debug Admin - visible seulement pour les admins */}
+          {isAdmin && (
+            <button 
+              onClick={() => navigate('/debug-admin')}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white text-xs font-bold rounded-lg hover:bg-purple-700 transition-all shadow-md"
+              title="Debug Admin"
+            >
+              <Zap size={14} />
+              DEBUG
+            </button>
+          )}
+          
+          {/* Badge Admin */}
+          {isAdmin && (
+            <button 
+              onClick={() => navigate('/admin')}
+              className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-orange-600 text-white text-xs font-bold rounded-lg hover:bg-orange-700 transition-all shadow-md"
+            >
+              <ShieldCheck size={14} />
+              Admin
+            </button>
+          )}
+          
+          <button 
             onClick={handleUserClick}
             className={`rounded-full transition-colors relative group ${
               isActive('/profil') ? 'ring-2 ring-orange-500' : 'hover:ring-2 hover:ring-gray-200'
@@ -238,16 +262,14 @@ export const Header = ({
             className="md:hidden bg-white border-t border-gray-100 overflow-hidden"
           >
             <div className="p-4 space-y-2">
-              <form onSubmit={(e) => { e.preventDefault(); handleSearchSubmit(); setIsMenuOpen(false); }} className="relative mb-4">
+              <div className="relative mb-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Rechercher..."
+                <input 
+                  type="text" 
+                  placeholder="Rechercher..." 
                   className="w-full bg-gray-50 border border-gray-200 rounded-lg py-2 pl-10 pr-4 text-sm"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
                 />
-              </form>
+              </div>
               {navItems.map((item) => (
                 <button
                   key={item.id}
@@ -266,6 +288,20 @@ export const Header = ({
                 </button>
               ))}
               <div className="pt-2 mt-2 border-t border-gray-100">
+                {/* Bouton Debug Admin - Mobile - visible seulement pour les admins */}
+                {isAdmin && (
+                  <button
+                    onClick={() => {
+                      navigate('/debug-admin');
+                      setIsMenuOpen(false);
+                    }}
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 mb-2"
+                  >
+                    <Zap size={18} />
+                    Debug Admin
+                  </button>
+                )}
+                
                 <button
                   onClick={() => {
                     handleUserClick();
@@ -284,45 +320,5 @@ export const Header = ({
         )}
       </AnimatePresence>
     </header>
-
-    {/* Mobile Bottom Navigation Bar */}
-    {!isCartPage && (
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white border-t border-gray-200 shadow-[0_-1px_10px_rgba(0,0,0,0.06)]"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <div className="flex h-14">
-          {bottomNavItems.map((item) => {
-            const active = isActive(item.path);
-            return (
-              <button
-                key={item.id}
-                onClick={() => {
-                  if (item.id === 'profile') handleUserClick();
-                  else onNavigate(item.id === 'cart' ? 'cart' : item.id);
-                }}
-                className={`flex-1 flex flex-col items-center justify-center gap-0.5 relative transition-colors ${
-                  active ? 'text-orange-600' : 'text-gray-400'
-                }`}
-              >
-                {active && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 bg-orange-600 rounded-full" />
-                )}
-                <div className="relative">
-                  <item.icon size={20} strokeWidth={active ? 2.5 : 1.8} />
-                  {item.id === 'cart' && cartCount > 0 && (
-                    <span className="absolute -top-1.5 -right-2 bg-orange-600 text-white text-[9px] font-black w-4 h-4 flex items-center justify-center rounded-full leading-none">
-                      {cartCount > 9 ? '9+' : cartCount}
-                    </span>
-                  )}
-                </div>
-                <span className={`text-[10px] font-semibold`}>{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </nav>
-    )}
-    </>
   );
 };

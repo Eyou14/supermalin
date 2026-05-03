@@ -1,6 +1,7 @@
-import { Mail, Phone, MapPin } from "lucide-react";
+import { Gavel, Mail, Phone, MapPin, LayoutDashboard } from "lucide-react";
 import { useNavigate } from "react-router";
 import { Logo } from "./Logo";
+const hdfLogo = "/logo-hdf.svg";
 
 export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) => {
   const navigate = useNavigate();
@@ -98,18 +99,18 @@ export const Footer = ({ onNavigate }: { onNavigate?: (page: string) => void }) 
                 </a>
               </li>
               <li className="flex items-start gap-3">
-                <MapPin size={18} className="text-orange-500 mt-0.5 shrink-0" />
-                <span className="text-gray-500 text-sm">Chauconin-Neufmontiers (77)<br/>Seine-et-Marne — Île-de-France</span>
+                <MapPin size={18} className="text-orange-500 mt-0.5" />
+                <span className="text-gray-500 text-sm">Hauts-de-France</span>
               </li>
             </ul>
           </div>
         </div>
 
-        {/* Partenaire Hauts-de-France */}
+        {/* Partner Section */}
         <div className="mb-12 flex items-center justify-center gap-8 p-6 bg-blue-50 rounded-2xl">
-          <img src="/logo-hdf.svg" alt="Région Hauts-de-France" className="h-16 w-auto" />
+          <img src={hdfLogo} alt="Région Hauts-de-France" className="h-16 w-auto" />
           <p className="text-sm text-gray-700 max-w-md">
-            SuperMalin est financé par la <strong>Région Hauts-de-France</strong> dans le cadre de son développement.
+            SuperMalin est soutenu par la <strong>Région Hauts-de-France</strong> dans le cadre de son développement.
           </p>
         </div>
 

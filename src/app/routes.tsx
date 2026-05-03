@@ -15,12 +15,9 @@ import { PolitiqueRetoursPage } from "./pages/legal/PolitiqueRetoursPage";
 import { ContactPage } from "./pages/ContactPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "./pages/ResetPasswordPage";
-import { TestResetPasswordPage } from "./pages/TestResetPasswordPage";
-import { DevResetPasswordPage } from "./pages/DevResetPasswordPage";
-import { PromoteAdminPage } from "./pages/PromoteAdminPage";
 import { AdminLoginPage } from "./pages/AdminLoginPage";
-import { DebugAdminPage } from "./pages/DebugAdminPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { DepotVentePage } from "./pages/DepotVentePage";
 
 export const router = createBrowserRouter([
   {
@@ -36,19 +33,16 @@ export const router = createBrowserRouter([
       { path: "profil", Component: ProfilePage },
       { path: "admin", Component: AdminPage },
       { path: "admin-login", Component: AdminLoginPage },
-      { path: "promote-admin", Component: PromoteAdminPage },
-      { path: "debug-admin", Component: DebugAdminPage },
       { path: "cgv", Component: CGVPage },
       { path: "mentions-legales", Component: MentionsLegalesPage },
       { path: "politique-confidentialite", Component: PolitiqueConfidentialitePage },
       { path: "politique-retours", Component: PolitiqueRetoursPage },
       { path: "contact", Component: ContactPage },
+      { path: "depot-vente", Component: DepotVentePage },
       { path: "*", Component: NotFoundPage },
     ],
   },
   // Routes sans layout (pages d'authentification)
   { path: "forgot-password", Component: ForgotPasswordPage },
   { path: "reset-password", Component: ResetPasswordPage },
-  { path: "test-reset-password", Component: TestResetPasswordPage },
-  { path: "dev-reset-password", Component: DevResetPasswordPage },
 ]);

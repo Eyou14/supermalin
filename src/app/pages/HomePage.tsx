@@ -5,8 +5,9 @@ import { ProductCard, Product } from '../components/ProductCard';
 import { MOCK_PRODUCTS } from '../mockData';
 import { AppContext } from '../layouts/RootLayout';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
-import { ChevronRight, ShieldCheck, TruckIcon, RefreshCcw } from 'lucide-react';
+import { ChevronRight, ShieldCheck, TruckIcon, RefreshCcw, Zap } from 'lucide-react';
 import { toast } from 'sonner';
+const hdfLogo = "/logo-hdf.svg";
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
 
@@ -160,8 +161,8 @@ export const HomePage: React.FC = () => {
               <div className="bg-orange-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
                 <TruckIcon size={32} />
               </div>
-              <h3 className="font-bold text-xl mb-2">Expédition 24/48h</h3>
-              <p className="text-gray-600">Mondial Relay ou Chronopost — Livraison offerte dès 50€</p>
+              <h3 className="font-bold text-xl mb-2">Livraison Rapide</h3>
+              <p className="text-gray-600">Mondial Relay, Colissimo & Chronopost</p>
             </div>
             <div className="text-center">
               <div className="bg-orange-600 text-white w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -174,24 +175,30 @@ export const HomePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Engagement strip */}
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { icon: '⚡', label: 'Expédition 24/48h', sub: 'Dès réception du paiement' },
-            { icon: '🎁', label: 'Livraison offerte', sub: 'À partir de 50€ d\'achat' },
-            { icon: '🔒', label: 'Paiement sécurisé', sub: 'Technologie Stripe' },
-            { icon: '↩️', label: 'Retours 14 jours', sub: 'Satisfait ou remboursé' },
-          ].map((item) => (
-            <div key={item.label} className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-all">
-              <div className="text-3xl mb-2">{item.icon}</div>
-              <p className="font-black text-gray-900 text-sm">{item.label}</p>
-              <p className="text-xs text-gray-500 mt-1">{item.sub}</p>
-            </div>
-          ))}
+      {/* Partner Section */}
+      <div className="container mx-auto px-4 text-center">
+        <div className="bg-white border-2 border-gray-200 rounded-3xl p-8 max-w-2xl mx-auto">
+          <img src={hdfLogo} alt="Région Hauts-de-France" className="h-16 mx-auto mb-4" />
+          <p className="text-gray-600 leading-relaxed">
+            SuperMalin est soutenu par la <strong>Région Hauts-de-France</strong> dans le cadre de son développement. 
+            Entreprise française engagée pour des prix justes et transparents.
+          </p>
         </div>
       </div>
 
+      {/* Bouton flottant Debug Admin - Visible seulement pour les admins */}
+      {isAdmin && (
+        <button
+          onClick={() => navigate('/debug-admin')}
+          className="fixed bottom-8 right-8 bg-gradient-to-r from-purple-600 to-purple-700 text-white p-4 rounded-full shadow-2xl hover:shadow-purple-500/50 hover:scale-110 transition-all z-40 group"
+          title="Accès Debug Admin"
+        >
+          <Zap size={24} className="group-hover:rotate-12 transition-transform" />
+          <span className="absolute -top-10 right-0 bg-gray-900 text-white text-xs px-3 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+            Debug Admin
+          </span>
+        </button>
+      )}
     </div>
   );
 };
