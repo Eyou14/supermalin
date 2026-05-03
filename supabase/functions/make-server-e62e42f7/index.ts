@@ -1,6 +1,6 @@
 import { Hono } from "npm:hono";
+import type { Context, Next } from "npm:hono";
 import { cors } from "npm:hono/cors";
-import { logger } from "npm:hono/logger";
 import { Resend } from "npm:resend";
 import { createClient } from "npm:@supabase/supabase-js";
 import * as kv from "./kv_store.ts";
@@ -17,18 +17,53 @@ app.use('*', cors({
   maxAge: 600,
 }));
 
-app.use('*', logger());
-
 // Initialize services with environment variables
 const STRIPE_SECRET_KEY = Deno.env.get("STRIPE_SECRET_KEY") || "";
 const STRIPE_WEBHOOK_SECRET = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY") || "";
-const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" });
 const resend = new Resend(RESEND_API_KEY);
+
+// Lazy Stripe initialization — évite le crash au démarrage si la clé est absente
+let _stripe: Stripe | null = null;
+const getStripe = (): Stripe => {
+  if (!_stripe) {
+    if (!STRIPE_SECRET_KEY) throw new Error("STRIPE_SECRET_KEY is not configured");
+    _stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" });
+  }
+  return _stripe;
+};
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+// ── Middleware d'authentification admin ────────────────────────────────────────
+// Vérifie le JWT Supabase ET que le profil en base a role = 'admin'
+const requireAdmin = async (c: Context, next: Next) => {
+  const authHeader = c.req.header("Authorization");
+  const token = authHeader?.replace("Bearer ", "").trim();
+
+  if (!token) {
+    return c.json({ error: "Unauthorized: missing token" }, 401);
+  }
+
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser(token);
+    if (error || !user) {
+      return c.json({ error: "Unauthorized: invalid token" }, 401);
+    }
+
+    // Double vérification côté base de données (role stocké dans kv_store)
+    const profile = await kv.get(`profile:${user.id}`);
+    if (!profile || profile.role !== 'admin') {
+      return c.json({ error: "Forbidden: admin access required" }, 403);
+    }
+
+    await next();
+  } catch (e) {
+    return c.json({ error: "Authentication error" }, 401);
+  }
+};
 
 const BUCKET_NAME = 'make-e62e42f7';
 
@@ -326,6 +361,40 @@ const setupRoutes = (router: Hono) => {
     }
   });
 
+  // Admin: Update user profile (name, balance, role)
+  router.put("/admin/users/:userId", async (c) => {
+    try {
+      const userId = c.req.param("userId");
+      const data = await c.req.json();
+
+      const existing = await kv.get(`profile:${userId}`);
+      if (!existing) {
+        return c.json({ error: "User not found" }, 404);
+      }
+
+      const updates: any = { ...existing, updatedAt: new Date().toISOString() };
+
+      if (data.name !== undefined && data.name.trim() !== '') {
+        updates.name = data.name.trim();
+      }
+      if (data.balance !== undefined) {
+        const newBalance = Number(data.balance);
+        if (isNaN(newBalance) || newBalance < 0) {
+          return c.json({ error: "Le solde doit être un nombre positif ou nul" }, 400);
+        }
+        updates.balance = Math.round(newBalance * 100) / 100;
+      }
+      if (data.role !== undefined && ['user', 'admin'].includes(data.role)) {
+        updates.role = data.role;
+      }
+
+      await kv.set(`profile:${userId}`, updates);
+      return c.json({ success: true, profile: updates });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
   // Promote user to admin
   router.post("/admin/promote", async (c) => {
     try {
@@ -505,7 +574,7 @@ const setupRoutes = (router: Hono) => {
                   
                   <div style="text-align: center; margin-top: 30px;">
                     <p style="color: #9ca3af; font-size: 12px;">L'équipe SuperMalin vous remercie de votre confiance 🧡</p>
-                    <p style="color: #9ca3af; font-size: 11px; margin-top: 10px;">SuperMalin SAS - SIRET: 92822322100013</p>
+                    <p style="color: #9ca3af; font-size: 11px; margin-top: 10px;">MounAchatMalin SAS — SuperMalin • SIRET : 928 223 221 00013</p>
                   </div>
                 </div>
               </div>
@@ -534,6 +603,87 @@ const setupRoutes = (router: Hono) => {
     const updated = { ...existing, ...updates };
     await kv.set(`order:${id}`, updated);
     return c.json(updated);
+  });
+
+  // Ship order — met à jour le statut + envoie l'email d'expédition au client
+  router.post("/orders/:id/ship", async (c) => {
+    try {
+      const id = c.req.param('id');
+      const { trackingNumber, carrier } = await c.req.json().catch(() => ({}));
+
+      const order = await kv.get(`order:${id}`);
+      if (!order) return c.json({ error: "Commande introuvable" }, 404);
+      if (order.status === 'shipped') return c.json({ error: "Déjà expédiée" }, 400);
+
+      // Mise à jour statut
+      const updated = {
+        ...order,
+        status: 'shipped',
+        shippedAt: new Date().toISOString(),
+        trackingNumber: trackingNumber || null,
+        carrier: carrier || null,
+      };
+      await kv.set(`order:${id}`, updated);
+
+      // Email d'expédition au client
+      const clientEmail = order.shippingInfo?.email || order.email;
+      if (clientEmail && RESEND_API_KEY) {
+        const clientName = order.shippingInfo?.name || order.customerName || 'Client';
+        const itemsList = (order.items || []).map((item: any) =>
+          `<li style="margin-bottom:6px;color:#374151;"><strong>${item.name}</strong> — ${item.price}€</li>`
+        ).join('');
+
+        const trackingBlock = trackingNumber ? `
+          <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:20px;margin:20px 0;">
+            <p style="margin:0 0 6px;font-size:13px;color:#166534;font-weight:bold;text-transform:uppercase;letter-spacing:0.05em;">📦 Numéro de suivi</p>
+            <p style="margin:0;font-size:22px;font-weight:900;color:#15803d;letter-spacing:0.05em;">${trackingNumber}</p>
+            ${carrier ? `<p style="margin:6px 0 0;font-size:13px;color:#166534;">Transporteur : <strong>${carrier}</strong></p>` : ''}
+          </div>` : '';
+
+        await resend.emails.send({
+          from: 'SuperMalin <contact@supermalin.fr>',
+          to: [clientEmail],
+          subject: `🚚 Votre commande ${id} est en route !`,
+          html: `
+            <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+              <div style="background:linear-gradient(135deg,#f97316 0%,#fb923c 100%);padding:30px;text-align:center;border-radius:12px 12px 0 0;">
+                <h1 style="color:white;margin:0;font-size:26px;">🚚 C'est parti !</h1>
+                <p style="color:rgba(255,255,255,0.9);margin:8px 0 0;font-size:15px;">Votre commande est en cours d'acheminement</p>
+              </div>
+              <div style="background:#ffffff;padding:30px;border:1px solid #e5e7eb;border-top:none;border-radius:0 0 12px 12px;">
+                <p style="font-size:16px;color:#374151;">Bonjour <strong>${clientName}</strong>,</p>
+                <p style="color:#6b7280;">Bonne nouvelle ! Votre commande <strong style="color:#f97316;">${id}</strong> vient d'être expédiée.</p>
+                ${trackingBlock}
+                <div style="background:#f9fafb;padding:16px;border-radius:8px;margin:20px 0;">
+                  <h3 style="margin:0 0 10px;color:#111827;font-size:14px;">Articles expédiés</h3>
+                  <ul style="list-style:none;padding:0;margin:0;">${itemsList}</ul>
+                </div>
+                <div style="background:#fff7ed;border-left:4px solid #f97316;padding:14px;border-radius:4px;margin:16px 0;">
+                  <p style="margin:0;font-weight:bold;color:#9a3412;">Total payé : ${(order.total || 0).toFixed(2)}€</p>
+                </div>
+                <div style="margin-top:20px;">
+                  <h3 style="color:#111827;font-size:14px;margin-bottom:8px;">Adresse de livraison</h3>
+                  <p style="color:#6b7280;font-size:14px;line-height:1.6;margin:0;">
+                    ${order.shippingInfo?.name || ''}<br>
+                    ${order.shippingInfo?.address || ''}<br>
+                    ${order.shippingInfo?.postalCode || ''} ${order.shippingInfo?.city || ''}
+                  </p>
+                </div>
+                <p style="font-size:13px;color:#9ca3af;margin-top:24px;">Une question ? Contactez-nous à <a href="mailto:contact@supermalin.fr" style="color:#f97316;">contact@supermalin.fr</a></p>
+              </div>
+              <div style="text-align:center;padding:16px;">
+                <p style="color:#9ca3af;font-size:11px;margin:0;">MounAchatMalin SAS — SuperMalin • SIRET : 928 223 221 00013</p>
+              </div>
+            </div>
+          `,
+        });
+      }
+
+      return c.json({ success: true, order: updated });
+    } catch (e) {
+      console.error("Ship order error:", e);
+      return c.json({ error: e.message }, 500);
+    }
   });
 
   // Requests (Buybacks/Consignment)
@@ -568,7 +718,7 @@ const setupRoutes = (router: Hono) => {
   router.post("/checkout/create-payment-intent", async (c) => {
     try {
       const { cart, userId, amount } = await c.req.json();
-      const paymentIntent = await stripe.paymentIntents.create({
+      const paymentIntent = await getStripe().paymentIntents.create({
         amount: Math.round(amount * 100),
         currency: "eur",
         metadata: { userId, cartCount: cart?.length || 0 },
@@ -590,7 +740,7 @@ const setupRoutes = (router: Hono) => {
 
     try {
       const body = await c.req.text();
-      const event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET);
+      const event = getStripe().webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET);
       
       console.log(`Received Stripe webhook event: ${event.type}`);
       
@@ -740,6 +890,295 @@ router.post("/signup", async (c) => {
     }
   });
 
+  // ── Arrivages (lots management) ─────────────────────────────────────────────
+
+  router.get("/arrivals", async (c) => {
+    try {
+      const arrivals = (await kv.get("arrivals:list")) || [];
+      return c.json(arrivals);
+    } catch (e) {
+      console.error("Error fetching arrivals:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  router.post("/arrivals", async (c) => {
+    try {
+      const body = await c.req.json();
+      const arrivals: any[] = (await kv.get("arrivals:list")) || [];
+      const newArrival = {
+        id: crypto.randomUUID(),
+        name: body.name || "Nouveau lot",
+        description: body.description || "",
+        productCount: Number(body.productCount) || 0,
+        date: new Date().toISOString(),
+        isActive: false,
+      };
+      arrivals.unshift(newArrival);
+      await kv.set("arrivals:list", arrivals);
+      return c.json(newArrival, 201);
+    } catch (e) {
+      console.error("Error creating arrival:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  router.put("/arrivals/:id/publish", async (c) => {
+    try {
+      const id = c.req.param("id");
+      const arrivals: any[] = (await kv.get("arrivals:list")) || [];
+      const idx = arrivals.findIndex((a) => a.id === id);
+      if (idx === -1) return c.json({ error: "Not found" }, 404);
+      // Désactiver tous les lots puis activer celui-ci
+      arrivals.forEach((a) => (a.isActive = false));
+      arrivals[idx].isActive = true;
+      arrivals[idx].publishedAt = new Date().toISOString();
+      await kv.set("arrivals:list", arrivals);
+      // Mettre à jour automatiquement les messages de la bannière
+      const arrival = arrivals[idx];
+      const config: any = (await kv.get("sections:config")) || {};
+      config.bannerMessage1 = `Derniers arrivages : +${arrival.productCount} produits cette semaine`;
+      config.bannerMessage2 = arrival.name;
+      await kv.set("sections:config", config);
+      return c.json({ success: true, arrival, bannerUpdated: true });
+    } catch (e) {
+      console.error("Error publishing arrival:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  router.put("/arrivals/:id", async (c) => {
+    try {
+      const id = c.req.param("id");
+      const body = await c.req.json();
+      const arrivals: any[] = (await kv.get("arrivals:list")) || [];
+      const idx = arrivals.findIndex((a) => a.id === id);
+      if (idx === -1) return c.json({ error: "Not found" }, 404);
+      arrivals[idx] = { ...arrivals[idx], ...body };
+      await kv.set("arrivals:list", arrivals);
+      return c.json(arrivals[idx]);
+    } catch (e) {
+      console.error("Error updating arrival:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  router.delete("/arrivals/:id", async (c) => {
+    try {
+      const id = c.req.param("id");
+      let arrivals: any[] = (await kv.get("arrivals:list")) || [];
+      arrivals = arrivals.filter((a) => a.id !== id);
+      await kv.set("arrivals:list", arrivals);
+      return c.json({ success: true });
+    } catch (e) {
+      console.error("Error deleting arrival:", e);
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // ── Codes Promo ──────────────────────────────────────────────────────────────
+
+  // Valider un code promo (public)
+  router.post("/promo/validate", async (c) => {
+    try {
+      const { code, total } = await c.req.json();
+      if (!code || typeof code !== 'string') {
+        return c.json({ valid: false, message: "Code manquant" });
+      }
+      const promos: any[] = (await kv.get("promos:list")) || [];
+      const promo = promos.find(
+        (p) => p.code.toUpperCase() === code.toUpperCase().trim()
+      );
+      if (!promo) return c.json({ valid: false, message: "Code promo invalide" });
+      if (!promo.is_active) return c.json({ valid: false, message: "Ce code n'est plus actif" });
+      if (promo.expires_at && new Date(promo.expires_at) < new Date()) {
+        return c.json({ valid: false, message: "Ce code a expiré" });
+      }
+      if (promo.max_uses !== null && promo.uses >= promo.max_uses) {
+        return c.json({ valid: false, message: "Ce code a atteint sa limite d'utilisation" });
+      }
+      const orderTotal = Number(total) || 0;
+      if (promo.min_order > 0 && orderTotal < promo.min_order) {
+        return c.json({ valid: false, message: `Commande minimum de ${promo.min_order}€ requise pour ce code` });
+      }
+      const discount = promo.type === 'percent'
+        ? Math.round(orderTotal * promo.amount / 100 * 100) / 100
+        : Math.min(promo.amount, orderTotal);
+      return c.json({
+        valid: true,
+        discount,
+        type: promo.type,
+        amount: promo.amount,
+        code: promo.code,
+        message: promo.type === 'percent'
+          ? `-${promo.amount}% appliqué — tu économises ${discount.toFixed(2)}€ 🎉`
+          : `-${promo.amount.toFixed(2)}€ appliqués sur ta commande 🎉`,
+      });
+    } catch (e) {
+      console.error("Error validating promo:", e);
+      return c.json({ valid: false, message: "Erreur de validation" }, 500);
+    }
+  });
+
+  // Admin — lister tous les codes promo
+  router.get("/admin/promos", async (c) => {
+    try {
+      const promos = (await kv.get("promos:list")) || [];
+      return c.json(promos);
+    } catch (e) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // Admin — créer un code promo
+  router.post("/admin/promos", async (c) => {
+    try {
+      const body = await c.req.json();
+      const promos: any[] = (await kv.get("promos:list")) || [];
+      if (promos.find((p) => p.code.toUpperCase() === body.code?.toUpperCase()?.trim())) {
+        return c.json({ error: "Ce code existe déjà" }, 400);
+      }
+      const newPromo = {
+        id: crypto.randomUUID(),
+        code: body.code.toUpperCase().trim(),
+        type: body.type || 'fixed',
+        amount: Number(body.amount) || 0,
+        min_order: Number(body.min_order) || 0,
+        max_uses: body.max_uses ? Number(body.max_uses) : null,
+        uses: 0,
+        expires_at: body.expires_at || null,
+        is_active: true,
+        created_at: new Date().toISOString(),
+      };
+      promos.push(newPromo);
+      await kv.set("promos:list", promos);
+      return c.json(newPromo);
+    } catch (e) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // Admin — modifier un code promo
+  router.put("/admin/promos/:id", async (c) => {
+    try {
+      const id = c.req.param("id");
+      const updates = await c.req.json();
+      let promos: any[] = (await kv.get("promos:list")) || [];
+      promos = promos.map((p) => (p.id === id ? { ...p, ...updates } : p));
+      await kv.set("promos:list", promos);
+      return c.json({ success: true });
+    } catch (e) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // Admin — supprimer un code promo
+  router.delete("/admin/promos/:id", async (c) => {
+    try {
+      const id = c.req.param("id");
+      let promos: any[] = (await kv.get("promos:list")) || [];
+      promos = promos.filter((p) => p.id !== id);
+      await kv.set("promos:list", promos);
+      return c.json({ success: true });
+    } catch (e) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // ── Dépôt-Vente ──────────────────────────────────────────────────────────────
+
+  // Submit a depot-vente request (public)
+  router.post("/depot-vente", async (c) => {
+    try {
+      const body = await c.req.json();
+      const { deviceType, brand, model, condition, askingPrice, description, name, email, phone } = body;
+      if (!deviceType || !brand || !model || !condition || !name || !email || !phone) {
+        return c.json({ error: "Champs obligatoires manquants" }, 400);
+      }
+      const submission = {
+        id: crypto.randomUUID(),
+        deviceType,
+        brand,
+        model,
+        condition,
+        askingPrice: askingPrice ? Number(askingPrice) : null,
+        description: description || "",
+        name,
+        email,
+        phone,
+        status: "pending",
+        createdAt: new Date().toISOString(),
+      };
+      const existing: any[] = (await kv.get("depot_vente:submissions")) || [];
+      await kv.set("depot_vente:submissions", [...existing, submission]);
+
+      // Email notification to admin
+      if (RESEND_API_KEY) {
+        try {
+          await resend.emails.send({
+            from: "SuperMalin <noreply@supermalin.fr>",
+            to: ["pierresimoneyou@gmail.com"],
+            subject: `📦 Nouveau dépôt-vente — ${brand} ${model}`,
+            html: `
+              <h2>Nouvelle demande de dépôt-vente</h2>
+              <p><strong>Appareil :</strong> ${deviceType} — ${brand} ${model}</p>
+              <p><strong>État :</strong> ${condition}</p>
+              <p><strong>Prix souhaité :</strong> ${askingPrice ? askingPrice + '€' : 'Non renseigné'}</p>
+              <p><strong>Description :</strong> ${description || '—'}</p>
+              <hr/>
+              <p><strong>Contact :</strong> ${name} — ${email} — ${phone}</p>
+              <p>Connectez-vous à l'admin pour gérer cette demande.</p>
+            `,
+          });
+        } catch (emailErr) {
+          console.error("Email error:", emailErr);
+        }
+      }
+
+      return c.json({ success: true, id: submission.id });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // List all depot-vente submissions (admin)
+  router.get("/admin/depot-vente", async (c) => {
+    try {
+      const submissions: any[] = (await kv.get("depot_vente:submissions")) || [];
+      return c.json(submissions.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // Update depot-vente submission status (admin)
+  router.put("/admin/depot-vente/:id", async (c) => {
+    try {
+      const id = c.req.param("id");
+      const body = await c.req.json();
+      const submissions: any[] = (await kv.get("depot_vente:submissions")) || [];
+      const updated = submissions.map((s) => s.id === id ? { ...s, ...body } : s);
+      await kv.set("depot_vente:submissions", updated);
+      return c.json({ success: true });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // Delete depot-vente submission (admin)
+  router.delete("/admin/depot-vente/:id", async (c) => {
+    try {
+      const id = c.req.param("id");
+      const submissions: any[] = (await kv.get("depot_vente:submissions")) || [];
+      await kv.set("depot_vente:submissions", submissions.filter((s) => s.id !== id));
+      return c.json({ success: true });
+    } catch (e: any) {
+      return c.json({ error: e.message }, 500);
+    }
+  });
+
+  // ── Sections Configuration ───────────────────────────────────────────────────
+
   // Sections Configuration
   router.get("/sections", async (c) => {
     try {
@@ -785,6 +1224,10 @@ router.post("/signup", async (c) => {
 
 const FUNCTION_NAME = "make-server-e62e42f7";
 const prefixed = new Hono();
+
+// Protection de tous les endpoints /admin/* — doit être avant setupRoutes
+prefixed.use('/admin/*', requireAdmin);
+
 setupRoutes(prefixed);
 app.route(`/${FUNCTION_NAME}`, prefixed);
 
