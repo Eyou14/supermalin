@@ -26,8 +26,6 @@ export const CheckoutPage: React.FC = () => {
 
   const finalizeCheckout = async (usedWallet: boolean, shippingMethod: string, shippingCost: number) => {
     try {
-      console.log('💳 Finalisation de la commande...', { usedWallet, shippingMethod, shippingCost });
-      
       // Calculer le montant du wallet utilisé
       const walletUsed = usedWallet ? Math.min(walletBalance, cartTotal) : 0;
       const remainingTotal = cartTotal - walletUsed;
@@ -48,8 +46,6 @@ export const CheckoutPage: React.FC = () => {
         },
         createdAt: new Date().toISOString()
       };
-
-      console.log('📦 Données de commande:', orderData);
 
       const response = await fetch(`${API_URL}/orders`, {
         method: 'POST',

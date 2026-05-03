@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link } from 'react-router';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import { supabase } from '/src/utils/supabase/client';
 import { toast } from 'sonner';
@@ -8,7 +8,6 @@ export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
-  const navigate = useNavigate();
   const [rateLimitError, setRateLimitError] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -24,25 +23,11 @@ export const ForgotPasswordPage: React.FC = () => {
       // MODE PRODUCTION: Rediriger vers la page de réinitialisation
       const redirectUrl = `${baseUrl}/reset-password`;
       
-      console.log('=== DIAGNOSTIC EMAIL RESET ===');
-      console.log('📧 Email:', email);
-      console.log('🌐 Origin:', window.location.origin);
-      console.log('🔗 RedirectURL:', redirectUrl);
-      console.log('⏰ Timestamp:', new Date().toISOString());
-      
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: redirectUrl,
       });
 
-      console.log('📦 Response data:', data);
-      console.log('❌ Response error:', error);
-
       if (error) {
-        console.error('🚨 ERREUR DÉTECTÉE:', error);
-        console.error('Code erreur:', error.code);
-        console.error('Status:', error.status);
-        console.error('Message:', error.message);
-        
         if (error.message.includes('rate limit')) {
           setRateLimitError(true); // ACTIVER L'AFFICHAGE DU MODE DEV
           toast.error('Trop de tentatives', {
@@ -147,44 +132,28 @@ export const ForgotPasswordPage: React.FC = () => {
           </p>
         </form>
 
-        {/* Rate Limit Error - Solution de contournement */}
+        {/* Rate Limit Error */}
         {rateLimitError && (
-          <div className="mt-6 bg-red-50 border-2 border-red-200 rounded-2xl p-6 space-y-4">
+          <div className="mt-6 bg-orange-50 border-2 border-orange-200 rounded-2xl p-6">
             <div className="text-center">
-              <h3 className="font-bold text-red-900 mb-2">⏱️ Limite d'envoi dépassée</h3>
-              <p className="text-sm text-red-700 mb-4">
-                Supabase limite à 4 emails par heure. Vous avez dépassé cette limite.
+              <h3 className="font-bold text-orange-900 mb-2">⏱️ Limite d'envoi dépassée</h3>
+              <p className="text-sm text-orange-700 mb-4">
+                Vous avez dépassé la limite d'envoi d'emails de réinitialisation.
               </p>
             </div>
-
-            <div className="bg-white rounded-xl p-4 border border-red-200">
-              <h4 className="font-bold text-gray-900 text-sm mb-2">🔧 Solutions :</h4>
+            <div className="bg-white rounded-xl p-4 border border-orange-200">
+              <h4 className="font-bold text-gray-900 text-sm mb-2">Solutions :</h4>
               <ul className="text-sm text-gray-700 space-y-2">
                 <li className="flex items-start gap-2">
-                  <span className="text-red-600 font-bold">1.</span>
+                  <span className="text-orange-600 font-bold">1.</span>
                   <span>Attendez <strong>1 heure</strong> et réessayez</span>
                 </li>
                 <li className="flex items-start gap-2">
-                  <span className="text-red-600 font-bold">2.</span>
-                  <span>Utilisez un <strong>autre email</strong> pour tester</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <span className="text-red-600 font-bold">3.</span>
-                  <span>Utilisez le <strong>mode développement</strong> ci-dessous ⬇️</span>
+                  <span className="text-orange-600 font-bold">2.</span>
+                  <span>Utilisez un <strong>autre email</strong></span>
                 </li>
               </ul>
             </div>
-
-            <button
-              onClick={() => navigate('/dev-reset-password')}
-              className="w-full bg-red-600 text-white py-4 rounded-2xl font-bold hover:bg-red-700 transition-all shadow-lg"
-            >
-              🛠️ Accéder au mode développement
-            </button>
-
-            <p className="text-xs text-red-600 text-center">
-              ⚠️ Le mode développement permet de contourner le rate limiting pour les tests
-            </p>
           </div>
         )}
       </div>
