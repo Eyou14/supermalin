@@ -194,13 +194,15 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                     <p className="text-sm font-bold text-gray-900">{product.condition}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl">
-                  <Package className="text-blue-600" size={24} />
-                  <div>
-                    <p className="text-[10px] font-black uppercase text-gray-400">Origine</p>
-                    <p className="text-sm font-bold text-gray-900">Rachat Particulier (HDF)</p>
+                {product.tags && product.tags.length > 0 && product.tags[0] && (
+                  <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl">
+                    <Package className="text-blue-600" size={24} />
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-gray-400">Origine</p>
+                      <p className="text-sm font-bold text-gray-900">{product.tags[0]}</p>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -210,7 +212,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                 <div className="space-y-2">
                   <Truck className="text-orange-600" size={24} />
                   <p className="font-bold text-sm">Expédition 24/48h</p>
-                  <p className="text-xs text-gray-500">Mondial Relay ou Chronopost</p>
+                  <p className="text-xs text-gray-500">Colissimo ou Chronopost</p>
                 </div>
                 <div className="space-y-2">
                   <RotateCcw className="text-orange-600" size={24} />

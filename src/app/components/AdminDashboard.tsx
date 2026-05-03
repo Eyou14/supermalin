@@ -658,13 +658,27 @@ export const AdminDashboard = () => {
     }
   };
 
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
-      <div className="w-64 bg-gray-900 text-white flex flex-col sticky top-0 h-screen shrink-0">
-        <div className="p-8 border-b border-white/10">
-          <Logo light />
+      {/* Sidebar */}
+      <div className={`bg-gray-900 text-white flex flex-col sticky top-0 h-screen shrink-0 transition-all duration-300 ${sidebarOpen ? 'w-64' : 'w-16'}`}>
+        <div className={`border-b border-white/10 flex items-center justify-between ${sidebarOpen ? 'p-8' : 'p-3'}`}>
+          {sidebarOpen && <Logo light />}
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/10 transition-all ml-auto shrink-0"
+            title={sidebarOpen ? 'Réduire' : 'Développer'}
+          >
+            {sidebarOpen ? (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8l4-4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            ) : (
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+            )}
+          </button>
         </div>
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-2 space-y-1">
           {[
             { id: 'requests', label: 'Demandes', icon: Inbox },
             { id: 'inventory', label: 'Inventaire', icon: Package },
@@ -679,24 +693,34 @@ export const AdminDashboard = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${
+              title={!sidebarOpen ? tab.label : undefined}
+              className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all ${
+                sidebarOpen ? '' : 'justify-center'
+              } ${
                 activeTab === tab.id
                   ? 'bg-orange-600 text-white'
                   : 'text-gray-400 hover:text-white hover:bg-white/5'
               }`}
             >
-              <tab.icon size={20} /> {tab.label}
+              <tab.icon size={20} className="shrink-0" />
+              {sidebarOpen && <span>{tab.label}</span>}
             </button>
           ))}
         </nav>
-        <div className="p-4 border-t border-white/10">
-          <div className="bg-white/5 rounded-xl p-4">
-            <p className="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Serveur Status</p>
-            <div className="flex items-center gap-2 text-xs text-green-400 font-bold">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-              Opérationnel
+        <div className="p-3 border-t border-white/10">
+          {sidebarOpen ? (
+            <div className="bg-white/5 rounded-xl p-4">
+              <p className="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Serveur Status</p>
+              <div className="flex items-center gap-2 text-xs text-green-400 font-bold">
+                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                Opérationnel
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="flex justify-center">
+              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" title="Opérationnel" />
+            </div>
+          )}
         </div>
       </div>
 
@@ -1396,7 +1420,8 @@ export const AdminDashboard = () => {
                 <thead className="bg-gray-50 border-b border-gray-100">
                   <tr>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Produit</th>
-                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Type</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Origine</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">État</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest">Prix</th>
                     <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-widest text-right">Actions</th>
                   </tr>
@@ -1424,8 +1449,17 @@ export const AdminDashboard = () => {
                               <span className="font-bold text-gray-900">{itemTitle}</span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-xs font-bold uppercase">
-                            {item.type === 'auction' ? 'Enchère' : 'Direct'}
+                          <td className="px-6 py-4">
+                            {(item as any).tags?.[0] ? (
+                              <span className="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-[10px] font-black uppercase px-2 py-1 rounded-full">
+                                {(item as any).tags[0]}
+                              </span>
+                            ) : (
+                              <span className="text-gray-300 text-xs">—</span>
+                            )}
+                          </td>
+                          <td className="px-6 py-4 text-xs text-gray-600 font-medium">
+                            {item.condition || '—'}
                           </td>
                           <td className="px-6 py-4 font-black">
                             {(item.type === 'auction' ? item.currentBid || item.price : item.price)?.toLocaleString()}€

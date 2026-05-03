@@ -23,36 +23,31 @@ export const NewArrivalsPage: React.FC = () => {
   }, []);
 
   const fetchNewArrivals = async () => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
     try {
       setIsLoading(true);
-      const response = await fetch(`${API_URL}/products?sortBy=newest&limit=50`, {
+      const response = await fetch(`${API_URL}/products`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
           'Content-Type': 'application/json'
-        }
+        },
+        signal: controller.signal,
       });
-      
+      clearTimeout(timeout);
+
       if (!response.ok) throw new Error(`Server error ${response.status}`);
-      
+
       const data = await response.json();
       if (Array.isArray(data) && data.length > 0) {
-        // Filter products by creation date (last 30 days) or "nouveau" tag
-        const thirtyDaysAgo = new Date();
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        
-        const newProducts = data.filter((p: any) => {
-          const createdAt = p.created_at ? new Date(p.created_at) : null;
-          const isRecent = createdAt && createdAt >= thirtyDaysAgo;
-          const hasNewTag = p.tags?.includes('nouveau') || p.tags?.includes('arrivage');
-          return isRecent || hasNewTag;
-        });
-        
-        setProducts(newProducts);
+        // Filtrer par is_new_arrival (flag posé dans l'admin)
+        const newProducts = data.filter((p: any) => p.is_new_arrival === true);
+        setProducts(newProducts.length > 0 ? newProducts : data);
       } else {
-        // Fallback to mock products sorted by newest
         setProducts(MOCK_PRODUCTS.slice(0, 12));
       }
     } catch (error) {
+      clearTimeout(timeout);
       console.error("Fetch new arrivals failed:", error);
       setProducts(MOCK_PRODUCTS.slice(0, 12));
     } finally {

@@ -9,7 +9,20 @@ export const ProfilePage: React.FC = () => {
   const { user, userProfile, updateUserProfile } = useContext(AppContext);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      // Timeout 3s — si Supabase est lent, on force la déconnexion locale
+      await Promise.race([
+        supabase.auth.signOut({ scope: 'local' }),
+        new Promise<void>((resolve) => setTimeout(resolve, 3000)),
+      ]);
+    } catch {
+      // Ignore les erreurs réseau
+    } finally {
+      // Force-clear toutes les clés Supabase du localStorage
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('sb-'))
+        .forEach((k) => localStorage.removeItem(k));
+    }
     navigate('/');
     window.location.reload();
   };
