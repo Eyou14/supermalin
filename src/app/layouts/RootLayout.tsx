@@ -85,6 +85,7 @@ export const RootLayout: React.FC = () => {
     setUserProfile(null);
     setWalletBalance(0);
     setIsAdmin(false);
+    setCart([]);
   };
 
   const checkSession = async () => {
@@ -109,10 +110,14 @@ export const RootLayout: React.FC = () => {
   };
 
  const fetchUserProfile = async (userId: string) => {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 6000);
   try {
     const response = await fetch(`${API_URL}/profile/${userId}`, {
       headers: { Authorization: `Bearer ${publicAnonKey}` },
+      signal: controller.signal,
     });
+    clearTimeout(timeout);
 
     if (response.ok) {
       const data = await response.json();
@@ -123,8 +128,10 @@ export const RootLayout: React.FC = () => {
       return;
     }
 
-    // Ne jamais écraser un admin si le profil n’existe pas dans le KV store
+    // Ne jamais écraser un admin si le profil n'existe pas dans le KV store
     console.warn('⚠️ Profil absent du KV store, création légère sans override du rôle');
+    const controller2 = new AbortController();
+    const timeout2 = setTimeout(() => controller2.abort(), 4000);
     await fetch(`${API_URL}/profile/${userId}`, {
       method: 'PUT',
       headers: {
@@ -132,8 +139,10 @@ export const RootLayout: React.FC = () => {
         Authorization: `Bearer ${publicAnonKey}`,
       },
       body: JSON.stringify({ userId }),
-    });
+      signal: controller2.signal,
+    }).finally(() => clearTimeout(timeout2));
   } catch (error) {
+    clearTimeout(timeout);
     console.error('❌ Error fetching profile:', error);
     setIsAdmin(false);
   }
@@ -245,6 +254,8 @@ export const RootLayout: React.FC = () => {
       privacy: '/politique-confidentialite',
       returns: '/politique-retours',
       contact: '/contact',
+      'nouveaux-arrivages': '/nouveaux-arrivages',
+      'depot-vente': '/depot-vente',
     };
 
     navigate(routes[page] || '/');
@@ -285,7 +296,7 @@ export const RootLayout: React.FC = () => {
 
           <DevBanner />
 
-          <main className="flex-1">
+          <main className="flex-1 pb-14 md:pb-0">
             <Outlet />
           </main>
 

@@ -383,6 +383,7 @@ export const AdminDashboard = () => {
         imageUrls.push(data.publicUrl);
       }
 
+      const originTag = formData.get('originTag') as string;
       const productData = {
         name: formData.get('name') as string,
         price: parseFloat(formData.get('price') as string),
@@ -391,7 +392,7 @@ export const AdminDashboard = () => {
         type: formData.get('type') as 'direct' | 'auction',
         condition: formData.get('condition') as string,
         stock: parseInt(formData.get('stock') as string) || 1,
-        // 🔥 IMPORTANT
+        tags: originTag ? [originTag] : [],
         image: imageUrls[0] || null,
         images: imageUrls,
       };
@@ -437,6 +438,7 @@ export const AdminDashboard = () => {
       const allImages = [...editExistingImages, ...newImageUrls];
       const imageUrl = allImages[0] || editingProduct.image_url || editingProduct.image || null;
 
+      const editOriginTag = formData.get('originTag') as string;
       const updates = {
         name: formData.get('name') as string,
         price: parseFloat(formData.get('price') as string),
@@ -448,6 +450,7 @@ export const AdminDashboard = () => {
         is_active: parseInt(formData.get('stock') as string) > 0,
         is_featured: (formData.get('isFeatured') as string) === 'on',
         is_new_arrival: (formData.get('isNewArrival') as string) === 'on',
+        tags: editOriginTag ? [editOriginTag] : [],
         ...(imageUrl ? { image_url: imageUrl } : {}),
         images: allImages,
       };
@@ -1554,6 +1557,21 @@ export const AdminDashboard = () => {
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none resize-none"
                   />
                 </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Origine / Provenance</label>
+                  <select
+                    name="originTag"
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                  >
+                    <option value="">— Aucune étiquette —</option>
+                    <option value="Rachat particulier (HdF)">Rachat particulier (HdF)</option>
+                    <option value="Rachat entreprise">Rachat entreprise</option>
+                    <option value="Dépôt-vente particulier">Dépôt-vente particulier</option>
+                    <option value="Stock neuf fournisseur">Stock neuf fournisseur</option>
+                    <option value="Don / Association">Don / Association</option>
+                    <option value="Import direct">Import direct</option>
+                  </select>
+                </div>
                 <div className="col-span-1 flex items-center gap-2">
                   <input type="checkbox" name="isNewArrival" id="isNewArrival" />
                   <label htmlFor="isNewArrival" className="text-sm font-medium">
@@ -1731,6 +1749,22 @@ export const AdminDashboard = () => {
                     />
                   </label>
                   <p className="text-[10px] text-gray-400">Survole une photo et clique × pour la supprimer. La 1ère photo est l'image principale.</p>
+                </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Origine / Provenance</label>
+                  <select
+                    name="originTag"
+                    defaultValue={(editingProduct as any).tags?.[0] || ''}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                  >
+                    <option value="">— Aucune étiquette —</option>
+                    <option value="Rachat particulier (HdF)">Rachat particulier (HdF)</option>
+                    <option value="Rachat entreprise">Rachat entreprise</option>
+                    <option value="Dépôt-vente particulier">Dépôt-vente particulier</option>
+                    <option value="Stock neuf fournisseur">Stock neuf fournisseur</option>
+                    <option value="Don / Association">Don / Association</option>
+                    <option value="Import direct">Import direct</option>
+                  </select>
                 </div>
                 <div className="col-span-1 flex items-center gap-2">
                   <input type="checkbox" name="isNewArrival" id="edit-isNewArrival" defaultChecked={(editingProduct as any).is_new_arrival} />
