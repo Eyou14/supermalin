@@ -729,7 +729,7 @@ export const AdminDashboard = () => {
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as any)}
+              onClick={() => { setActiveTab(tab.id as any); setSearchTerm(''); }}
               title={!sidebarOpen ? tab.label : undefined}
               className={`w-full flex items-center gap-3 px-3 py-3 rounded-xl font-bold transition-all ${
                 sidebarOpen ? '' : 'justify-center'
@@ -744,21 +744,6 @@ export const AdminDashboard = () => {
             </button>
           ))}
         </nav>
-        <div className="p-3 border-t border-white/10">
-          {sidebarOpen ? (
-            <div className="bg-white/5 rounded-xl p-4">
-              <p className="text-[10px] font-bold text-gray-500 uppercase mb-2 tracking-widest">Serveur Status</p>
-              <div className="flex items-center gap-2 text-xs text-green-400 font-bold">
-                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                Opérationnel
-              </div>
-            </div>
-          ) : (
-            <div className="flex justify-center">
-              <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" title="Opérationnel" />
-            </div>
-          )}
-        </div>
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -777,16 +762,18 @@ export const AdminDashboard = () => {
             </h1>
           </div>
           <div className="flex items-center gap-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-              <input
-                type="text"
-                placeholder="Rechercher..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-gray-100 border-none rounded-xl pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-500/20 w-64"
-              />
-            </div>
+            {(activeTab === 'inventory' || activeTab === 'users') && (
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+                <input
+                  type="text"
+                  placeholder="Rechercher..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-gray-100 border-none rounded-xl pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-500/20 w-64"
+                />
+              </div>
+            )}
             {activeTab === 'inventory' && (
               <button
                 onClick={() => setIsAddModalOpen(true)}
@@ -1004,7 +991,10 @@ export const AdminDashboard = () => {
             <div className="max-w-2xl space-y-6">
               <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-8">
                 <h2 className="text-lg font-black text-gray-900 mb-2">Bannière d'accueil</h2>
-                <p className="text-sm text-gray-400 mb-6">Ces messages apparaissent sur la page d'accueil dans la section héro.</p>
+                <p className="text-sm text-gray-400 mb-2">Ces messages apparaissent sur la page d'accueil dans la section héro.</p>
+                <p className="text-xs text-orange-600 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2 mb-6">
+                  Publier un lot dans l'onglet « Arrivages » écrase automatiquement ces deux messages.
+                </p>
                 <div className="space-y-4">
                   <div className="space-y-1">
                     <label className="text-[10px] font-black uppercase text-gray-400">Message principal (badge orange)</label>
