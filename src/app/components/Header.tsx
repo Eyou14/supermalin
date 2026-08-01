@@ -37,11 +37,20 @@ export const Header = ({
   const navItems = [
     { id: 'home', label: 'Accueil', icon: LayoutGrid, path: '/' },
     { id: 'shop', label: 'Boutique', icon: ShoppingCart, path: '/boutique' },
+    { id: 'auctions', label: 'Enchères', icon: Gavel, path: '/boutique?type=auction' },
     { id: 'nouveaux-arrivages', label: 'Arrivages', icon: Zap, path: '/nouveaux-arrivages' },
     { id: 'depot-vente', label: 'Vendre', icon: ArrowLeftRight, path: '/depot-vente' },
     { id: 'contact', label: 'Contact', icon: Info, path: '/contact' },
     ...(isAdmin ? [{ id: 'admin', label: 'Admin', icon: ShieldCheck, path: '/admin' }] : []),
   ];
+
+  const handleNavItemClick = (item: { id: string; path: string }) => {
+    if (item.id === 'auctions') {
+      navigate(item.path);
+    } else {
+      onNavigate(item.id);
+    }
+  };
 
   const handleUserClick = () => {
     if (isLoggedIn) {
@@ -53,6 +62,12 @@ export const Header = ({
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
+    if (path === '/boutique?type=auction') {
+      return location.pathname.startsWith('/boutique') && location.search.includes('type=auction');
+    }
+    if (path === '/boutique') {
+      return location.pathname.startsWith('/boutique') && !location.search.includes('type=auction');
+    }
     return location.pathname.startsWith(path);
   };
 
@@ -139,10 +154,10 @@ export const Header = ({
           {navItems.map((item) => (
             <button
               key={item.id}
-              onClick={() => onNavigate(item.id)}
+              onClick={() => handleNavItemClick(item)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                isActive(item.path) 
-                  ? 'bg-orange-50 text-orange-700' 
+                isActive(item.path)
+                  ? 'bg-orange-50 text-orange-700'
                   : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
@@ -253,7 +268,7 @@ export const Header = ({
                 <button
                   key={item.id}
                   onClick={() => {
-                    onNavigate(item.id);
+                    handleNavItemClick(item);
                     setIsMenuOpen(false);
                   }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left text-sm font-medium ${

@@ -127,28 +127,21 @@ export const ProductCard = ({
             {product.condition}
           </span>
 
-          {product.tested && (
+          {/* Un seul badge secondaire max, par ordre de priorité : nouveauté > testé > tag d'origine */}
+          {product.is_new_arrival ? (
+            <span className="bg-blue-50/90 backdrop-blur-sm text-blue-700 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border border-blue-100">
+              Nouvel arrivage
+            </span>
+          ) : product.tested ? (
             <span className="bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border border-gray-200 flex items-center gap-1">
               <ShieldCheck size={12} className="text-green-600" />
               Testé
             </span>
-          )}
-
-          {product.tags &&
-            product.tags.slice(0, 2).map((tag, i) => (
-              <span
-                key={i}
-                className="bg-orange-50/90 backdrop-blur-sm text-orange-700 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border border-orange-100"
-              >
-                {tag}
-              </span>
-            ))}
-
-          {product.is_new_arrival && (
-            <span className="bg-blue-50/90 backdrop-blur-sm text-blue-700 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border border-blue-100">
-              Nouvel arrivage
+          ) : product.tags && product.tags[0] ? (
+            <span className="bg-orange-50/90 backdrop-blur-sm text-orange-700 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase border border-orange-100">
+              {product.tags[0]}
             </span>
-          )}
+          ) : null}
         </div>
 
         {product.type === "auction" && (

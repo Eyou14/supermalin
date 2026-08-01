@@ -5,7 +5,7 @@ import { ProductCard, Product } from '../components/ProductCard';
 import { MOCK_PRODUCTS } from '../mockData';
 import { AppContext } from '../layouts/RootLayout';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
-import { ChevronRight, ShieldCheck, TruckIcon, RefreshCcw } from 'lucide-react';
+import { ChevronRight, ShieldCheck, TruckIcon, RefreshCcw, Gavel, Clock } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
@@ -50,9 +50,27 @@ export const HomePage: React.FC = () => {
     return true;
   });
 
+  const [auctions, setAuctions] = useState<Product[]>([]);
+
   useEffect(() => {
     fetchProducts();
+    fetchActiveAuctions();
   }, []);
+
+  const fetchActiveAuctions = async () => {
+    try {
+      const response = await fetch(`${API_URL}/auctions?status=active`, {
+        headers: { 'Authorization': `Bearer ${publicAnonKey}` },
+      });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (Array.isArray(data)) {
+        setAuctions(data.map((a: any) => a.product).filter(Boolean));
+      }
+    } catch (error) {
+      console.error('Fetch auctions failed:', error);
+    }
+  };
 
   const fetchProducts = async () => {
     const controller = new AbortController();
@@ -129,7 +147,47 @@ export const HomePage: React.FC = () => {
   return (
     <div className="space-y-20">
       <Hero onNavigate={handleNavigate} />
-      
+
+      {/* Enchères en direct */}
+      {auctions.length > 0 && (
+        <div className="bg-gray-900 py-14">
+          <div className="container mx-auto px-4">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="relative flex items-center justify-center w-10 h-10 bg-orange-600 rounded-xl">
+                  <Gavel size={20} className="text-white" />
+                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse border-2 border-gray-900" />
+                </div>
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-black text-white">Enchères en direct</h2>
+                  <p className="text-gray-400 text-sm flex items-center gap-1.5">
+                    <Clock size={13} /> Misez avant la fin du compte à rebours
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => navigate('/boutique?type=auction')}
+                className="text-orange-400 font-bold flex items-center gap-2 hover:gap-3 transition-all shrink-0"
+              >
+                Tout voir <ChevronRight size={20} />
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {auctions.slice(0, 4).map(product => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onClick={() => navigate(`/boutique/${product.id}`)}
+                  onAction={(e) => handleAddToCart(e, product)}
+                  onWishlist={(e) => handleToggleWishlist(e, product.id)}
+                  isWishlisted={wishlist?.includes(product.id) || false}
+                />
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Categories Section */}
       <div className="container mx-auto px-4">
         <h2 className="text-3xl font-black text-gray-900 mb-8 text-center">Nos Catégories</h2>
@@ -201,24 +259,6 @@ export const HomePage: React.FC = () => {
               <p className="text-gray-600">Satisfait ou remboursé sans condition</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Engagement strip */}
-      <div className="container mx-auto px-4">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {[
-            { icon: '⚡', label: 'Expédition 24/48h', sub: 'Dès réception du paiement' },
-            { icon: '🎁', label: 'Livraison offerte', sub: 'À partir de 50€ d\'achat' },
-            { icon: '🔒', label: 'Paiement sécurisé', sub: 'Technologie Stripe' },
-            { icon: '↩️', label: 'Retours 14 jours', sub: 'Satisfait ou remboursé' },
-          ].map((item) => (
-            <div key={item.label} className="bg-white border border-gray-100 rounded-2xl p-5 text-center shadow-sm hover:shadow-md transition-all">
-              <div className="text-3xl mb-2">{item.icon}</div>
-              <p className="font-black text-gray-900 text-sm">{item.label}</p>
-              <p className="text-xs text-gray-500 mt-1">{item.sub}</p>
-            </div>
-          ))}
         </div>
       </div>
 

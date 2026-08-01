@@ -4,7 +4,7 @@ import { ProductCard, Product } from '../components/ProductCard';
 import { MOCK_PRODUCTS } from '../mockData';
 import { AppContext } from '../layouts/RootLayout';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
-import { Filter, ChevronDown, X, Search } from 'lucide-react';
+import { Filter, ChevronDown, X, Search, Gavel } from 'lucide-react';
 import { toast } from 'sonner';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
@@ -61,6 +61,7 @@ export const ShopPage: React.FC = () => {
   const [showFilters, setShowFilters] = useState(false);
   
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('categorie') || '');
+  const [selectedType, setSelectedType] = useState(searchParams.get('type') || '');
   const [selectedCondition, setSelectedCondition] = useState<string>('');
   const [priceRange, setPriceRange] = useState<[number, number]>([0, 10000]);
   const [inStockOnly, setInStockOnly] = useState(false);
@@ -74,8 +75,10 @@ export const ShopPage: React.FC = () => {
   useEffect(() => {
     const cat = searchParams.get('categorie') || '';
     const search = searchParams.get('search') || '';
+    const type = searchParams.get('type') || '';
     setSelectedCategory(cat);
     setSearchQuery(search);
+    setSelectedType(type);
   }, [searchParams]);
 
   const fetchProducts = async () => {
@@ -111,6 +114,7 @@ export const ShopPage: React.FC = () => {
   };
 
   const filteredProducts = products.filter(p => {
+    if (selectedType && p.type !== selectedType) return false;
     if (selectedCategory && p.category?.toLowerCase() !== selectedCategory.toLowerCase()) return false;
     if (selectedCondition && p.condition !== selectedCondition) return false;
     if (p.price < priceRange[0] || p.price > priceRange[1]) return false;
@@ -166,11 +170,22 @@ export const ShopPage: React.FC = () => {
 
   const resetFilters = () => {
     setSelectedCategory('');
+    setSelectedType('');
     setSelectedCondition('');
     setPriceRange([0, 10000]);
     setInStockOnly(false);
     setSortBy('newest');
     setSearchParams({});
+  };
+
+  const handleTypeToggle = (type: string) => {
+    setSelectedType(type);
+    setSearchParams(prev => {
+      const p = new URLSearchParams(prev);
+      if (type) p.set('type', type);
+      else p.delete('type');
+      return p;
+    });
   };
 
   const activeFiltersCount = [
@@ -189,13 +204,15 @@ export const ShopPage: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-12">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div>
-          <h1 className="text-3xl font-black mb-1">Boutique</h1>
+          <h1 className="text-3xl font-black mb-1">
+            {selectedType === 'auction' ? 'Enchères en cours' : 'Boutique'}
+          </h1>
           <p className="text-gray-500 text-sm">
             {searchQuery.trim()
               ? <>{sortedProducts.length} résultat{sortedProducts.length !== 1 ? 's' : ''} pour <span className="font-bold text-gray-800">« {searchQuery} »</span></>
-              : <>{sortedProducts.length} produits disponibles</>
+              : <>{sortedProducts.length} produit{sortedProducts.length !== 1 ? 's' : ''} disponible{sortedProducts.length !== 1 ? 's' : ''}</>
             }
           </p>
         </div>
@@ -239,6 +256,26 @@ export const ShopPage: React.FC = () => {
             Filtres {activeFiltersCount > 0 && `(${activeFiltersCount})`}
           </button>
         </div>
+      </div>
+
+      <div className="flex items-center gap-2 mb-8">
+        <button
+          onClick={() => handleTypeToggle('')}
+          className={`px-4 py-2 rounded-full text-sm font-bold transition-all ${
+            !selectedType ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Tous les articles
+        </button>
+        <button
+          onClick={() => handleTypeToggle('auction')}
+          className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all ${
+            selectedType === 'auction' ? 'bg-orange-600 text-white' : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+          }`}
+        >
+          <Gavel size={14} />
+          Enchères
+        </button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">

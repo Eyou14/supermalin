@@ -13,10 +13,8 @@ import {
   Package,
   Truck,
   RotateCcw,
-  CheckCircle2,
   AlertCircle,
   MessageCircle,
-  Trophy,
   History
 } from 'lucide-react';
 import { Product } from './ProductCard';
@@ -468,34 +466,6 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
             </AnimatePresence>
           </div>
 
-          <div className="bg-gray-900 rounded-[2.5rem] p-8 text-white relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-6 opacity-10 group-hover:scale-110 transition-transform">
-              <Trophy size={100} />
-            </div>
-            <div className="relative z-10 flex items-center gap-6">
-              <div className="w-16 h-16 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center text-orange-500">
-                <ShieldCheck size={32} />
-              </div>
-              <div>
-                <h3 className="text-lg font-black">SuperMalin Protekt</h3>
-                <p className="text-sm text-gray-400">
-                  Paiement 100% sécurisé et garantie contre la casse pendant le transport.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-4 justify-center">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
-              <CheckCircle2 size={14} className="text-green-500" />
-              Sellers Pro Certifié
-            </div>
-            <div className="w-1 h-1 bg-gray-300 rounded-full" />
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500">
-              <CheckCircle2 size={14} className="text-green-500" />
-              Service Client 24/7
-            </div>
-          </div>
         </div>
       </div>
     </div>
