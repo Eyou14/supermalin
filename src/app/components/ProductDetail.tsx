@@ -57,6 +57,10 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   const [bidAmount, setBidAmount] = useState<number>((product.currentBid || product.price) + minIncrement);
   const [isPlacingBid, setIsPlacingBid] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
+  const isAuctionEnded =
+    timeLeft === 'Terminée' ||
+    ['ended', 'sold', 'cancelled'].includes(product.auctionStatus || '') ||
+    (product.auctionEnd ? new Date(product.auctionEnd).getTime() < Date.now() : false);
 
   const productTitle = product.title || product.name || 'Produit';
 
@@ -285,35 +289,42 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                       </div>
                     </div>
 
-                    <form onSubmit={handleBidSubmit} className="space-y-4">
-                      <div className="flex gap-2">
-                        <div className="flex-1 relative">
-                          <input
-                            type="number"
-                            value={bidAmount}
-                            onChange={(e) => setBidAmount(Number(e.target.value))}
-                            className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-4 text-xl font-black outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500"
-                          />
-                          <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-gray-400">
-                            €
-                          </span>
-                        </div>
-                        <button
-                          type="submit"
-                          disabled={isPlacingBid}
-                          className="px-8 bg-gray-900 text-white rounded-2xl font-black hover:bg-orange-600 transition-all shadow-lg flex items-center gap-2 disabled:opacity-50"
-                        >
-                          {isPlacingBid ? (
-                            <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                          ) : (
-                            'Enchérir'
-                          )}
-                        </button>
+                    {isAuctionEnded ? (
+                      <div className="bg-white border border-gray-200 rounded-2xl px-5 py-4 text-center">
+                        <p className="text-sm font-black text-gray-900">Cette enchère est terminée.</p>
+                        <p className="text-xs text-gray-400 mt-1">Les offres ne sont plus acceptées sur cet article.</p>
                       </div>
-                      <p className="text-[10px] text-gray-400 text-center font-bold uppercase">
-                        Mise minimale : {((product.currentBid || product.price) + minIncrement).toLocaleString('fr-FR')}€
-                      </p>
-                    </form>
+                    ) : (
+                      <form onSubmit={handleBidSubmit} className="space-y-4">
+                        <div className="flex gap-2">
+                          <div className="flex-1 relative">
+                            <input
+                              type="number"
+                              value={bidAmount}
+                              onChange={(e) => setBidAmount(Number(e.target.value))}
+                              className="w-full bg-white border border-gray-200 rounded-2xl px-5 py-4 text-xl font-black outline-none focus:ring-4 focus:ring-orange-500/10 focus:border-orange-500"
+                            />
+                            <span className="absolute right-5 top-1/2 -translate-y-1/2 font-black text-gray-400">
+                              €
+                            </span>
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={isPlacingBid}
+                            className="px-8 bg-gray-900 text-white rounded-2xl font-black hover:bg-orange-600 transition-all shadow-lg flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isPlacingBid ? (
+                              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            ) : (
+                              'Enchérir'
+                            )}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-gray-400 text-center font-bold uppercase">
+                          Mise minimale : {((product.currentBid || product.price) + minIncrement).toLocaleString('fr-FR')}€
+                        </p>
+                      </form>
+                    )}
                   </div>
 
                   <div className="relative">
