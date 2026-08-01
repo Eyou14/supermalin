@@ -131,23 +131,51 @@ const setupRoutes = (router: Hono) => {
     });
   });
 
-  // Helper: map Supabase row to frontend Product shape
-  const toProduct = (row: any) => ({
-    ...row,
-    name: row.title,
-    originalPrice: row.original_price ?? undefined,
-    image: row.image_url ?? undefined,
-  });
+  // Helper: map Supabase row to frontend Product shape.
+  // `auction` (optionnel) est la ligne de la table auctions liée à ce produit,
+  // utilisée pour reconstituer les champs legacy attendus par le front (auctionEnd, currentBid, bidCount).
+  const toProduct = (row: any, auction?: any) => {
+    const base = {
+      ...row,
+      name: row.title,
+      originalPrice: row.original_price ?? undefined,
+      image: row.image_url ?? undefined,
+    };
+    if (row.type === 'auction' && auction) {
+      return {
+        ...base,
+        auctionId: auction.id,
+        auctionEnd: auction.ends_at,
+        currentBid: Number(auction.current_price),
+        bidCount: auction.bid_count,
+        auctionStatus: auction.status,
+        minIncrement: Number(auction.min_increment),
+      };
+    }
+    return base;
+  };
+
+  // Helper: récupère les enchères liées à une liste de produits, indexées par product_id
+  const fetchAuctionsByProduct = async (productIds: string[]): Promise<Record<string, any>> => {
+    if (productIds.length === 0) return {};
+    const { data, error } = await supabase.from('auctions').select('*').in('product_id', productIds);
+    if (error || !data) return {};
+    const map: Record<string, any> = {};
+    for (const a of data) map[a.product_id] = a;
+    return map;
+  };
 
   // Products
   router.get("/products", async (c) => {
     try {
+      await supabase.rpc('close_expired_auctions').then(null, () => {});
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      return c.json((data || []).map(toProduct));
+      const auctionMap = await fetchAuctionsByProduct((data || []).map((p: any) => p.id));
+      return c.json((data || []).map((p: any) => toProduct(p, auctionMap[p.id])));
     } catch (e) {
       console.error("Error fetching products:", e);
       return c.json([]);
@@ -165,7 +193,8 @@ const setupRoutes = (router: Hono) => {
         .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%`)
         .eq('is_active', true);
       if (error) throw error;
-      return c.json((data || []).map(toProduct));
+      const auctionMap = await fetchAuctionsByProduct((data || []).map((p: any) => p.id));
+      return c.json((data || []).map((p: any) => toProduct(p, auctionMap[p.id])));
     } catch (e) {
       console.error("Search error:", e);
       return c.json([]);
@@ -192,11 +221,13 @@ const setupRoutes = (router: Hono) => {
         price:          p.price,
         original_price: p.originalPrice ?? p.original_price ?? null,
         stock:          p.stock         ?? 0,
+        type:           p.type === 'auction' ? 'auction' : 'direct',
         is_active:      p.is_active     ?? true,
         is_new_arrival: p.is_new_arrival ?? false,
         is_featured:    p.is_featured   ?? false,
         image_url:      p.image_url     || p.image || null,
         images:         p.images        || [],
+        tags:           Array.isArray(p.tags) ? p.tags : [],
         sku:            p.sku           || null,
       };
       const { data, error } = await supabase.from('products').insert(row).select().single();
@@ -219,12 +250,14 @@ const setupRoutes = (router: Hono) => {
     if (updates.originalPrice  !== undefined) patch.original_price = updates.originalPrice;
     if (updates.stock        !== undefined)   patch.stock          = updates.stock;
     if (updates.condition)                    patch.condition      = updates.condition;
+    if (updates.type === 'direct' || updates.type === 'auction') patch.type = updates.type;
     if (updates.is_active    !== undefined)   patch.is_active      = updates.is_active;
     if (updates.is_featured  !== undefined)   patch.is_featured    = updates.is_featured;
     if (updates.is_new_arrival !== undefined) patch.is_new_arrival = updates.is_new_arrival;
     if (updates.image_url || updates.image)   patch.image_url      = updates.image_url || updates.image;
     if (updates.images)                       patch.images         = updates.images;
     if (updates.sku)                          patch.sku            = updates.sku;
+    if (updates.tags !== undefined)           patch.tags           = Array.isArray(updates.tags) ? updates.tags : [];
     const { data, error } = await supabase.from('products').update(patch).eq('id', id).select().single();
     if (error) return c.json({ error: error.message }, 404);
     return c.json(toProduct(data));
@@ -235,6 +268,171 @@ const setupRoutes = (router: Hono) => {
     const { error } = await supabase.from('products').delete().eq('id', id);
     if (error) return c.json({ error: error.message }, 500);
     return c.json({ success: true });
+  });
+
+  // ── Enchères ─────────────────────────────────────────────────────────────
+
+  const toAuctionView = (a: any, product?: any) => ({
+    id: a.id,
+    productId: a.product_id,
+    startPrice: Number(a.start_price),
+    currentPrice: Number(a.current_price),
+    minIncrement: Number(a.min_increment),
+    reservePrice: a.reserve_price !== null && a.reserve_price !== undefined ? Number(a.reserve_price) : null,
+    startsAt: a.starts_at,
+    endsAt: a.ends_at,
+    status: a.status,
+    bidCount: a.bid_count,
+    winnerId: a.winner_id ?? null,
+    product: product ? toProduct(product, a) : undefined,
+  });
+
+  // Liste des enchères (public) — clôture d'abord les enchères expirées
+  router.get("/auctions", async (c) => {
+    try {
+      await supabase.rpc('close_expired_auctions').then(null, () => {});
+      const status = c.req.query('status');
+      let query = supabase.from('auctions').select('*, products(*)').order('ends_at', { ascending: true });
+      if (status) query = query.eq('status', status);
+      const { data, error } = await query;
+      if (error) throw error;
+      return c.json((data || []).map((a: any) => toAuctionView(a, a.products)));
+    } catch (e) {
+      console.error("Error fetching auctions:", e);
+      return c.json([]);
+    }
+  });
+
+  // Détail d'une enchère (public)
+  router.get("/auctions/:id", async (c) => {
+    try {
+      await supabase.rpc('close_expired_auctions').then(null, () => {});
+      const id = c.req.param('id');
+      const { data, error } = await supabase.from('auctions').select('*, products(*)').eq('id', id).single();
+      if (error || !data) return c.json({ error: "Enchère introuvable" }, 404);
+      return c.json(toAuctionView(data, data.products));
+    } catch (e) {
+      return c.json({ error: (e as any).message }, 500);
+    }
+  });
+
+  // Historique des offres (public, pseudonymisé)
+  router.get("/auctions/:id/bids", async (c) => {
+    try {
+      const id = c.req.param('id');
+      const { data, error } = await supabase
+        .from('auction_bids')
+        .select('id, amount, created_at, user_id')
+        .eq('auction_id', id)
+        .order('amount', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (error) throw error;
+      const bids = (data || []).map((b: any, i: number) => ({
+        id: b.id,
+        amount: Number(b.amount),
+        createdAt: b.created_at,
+        bidder: `Enchérisseur ${String(b.user_id).slice(0, 4).toUpperCase()}***`,
+        isLeader: i === 0,
+      }));
+      return c.json(bids);
+    } catch (e) {
+      console.error("Error fetching bids:", e);
+      return c.json([]);
+    }
+  });
+
+  // Poser une enchère — nécessite un utilisateur connecté (JWT dans Authorization)
+  router.post("/auctions/:id/bids", async (c) => {
+    const authHeader = c.req.header("Authorization");
+    const token = authHeader?.replace("Bearer ", "").trim();
+    if (!token) return c.json({ error: "Connectez-vous pour enchérir." }, 401);
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) return c.json({ error: "Session invalide, reconnectez-vous." }, 401);
+
+    try {
+      const id = c.req.param('id');
+      const { amount } = await c.req.json();
+      const numericAmount = Number(amount);
+      if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+        return c.json({ error: "Montant invalide." }, 400);
+      }
+
+      const { data, error } = await supabase.rpc('place_bid', {
+        p_auction_id: id,
+        p_user_id: user.id,
+        p_amount: numericAmount,
+      });
+
+      if (error) {
+        const code = (error.message || '').match(/AUCTION_NOT_FOUND|AUCTION_NOT_ACTIVE|AUCTION_ENDED|BID_TOO_LOW/)?.[0];
+        const messages: Record<string, string> = {
+          AUCTION_NOT_FOUND: "Cette enchère n'existe pas.",
+          AUCTION_NOT_ACTIVE: "Cette enchère n'est plus active.",
+          AUCTION_ENDED: "Cette enchère est terminée.",
+          BID_TOO_LOW: "Votre offre doit être supérieure au prix actuel + l'incrément minimum.",
+        };
+        return c.json({ error: code ? messages[code] : "Impossible de placer cette enchère." }, 400);
+      }
+
+      return c.json(toAuctionView(data));
+    } catch (e) {
+      console.error("Error placing bid:", e);
+      return c.json({ error: "Erreur serveur lors de la pose de l'enchère." }, 500);
+    }
+  });
+
+  // ── Admin : gestion des enchères (protégé par requireAdmin sur /admin/*) ───
+
+  router.post("/admin/auctions", async (c) => {
+    try {
+      const body = await c.req.json();
+      const { productId, startPrice, minIncrement, reservePrice, endsAt } = body;
+      if (!productId || !startPrice || !endsAt) {
+        return c.json({ error: "productId, startPrice et endsAt sont obligatoires." }, 400);
+      }
+
+      // Le produit doit être marqué comme type "auction"
+      await supabase.from('products').update({ type: 'auction' }).eq('id', productId);
+
+      const { data, error } = await supabase
+        .from('auctions')
+        .insert({
+          product_id: productId,
+          start_price: startPrice,
+          current_price: startPrice,
+          min_increment: minIncrement || 1,
+          reserve_price: reservePrice || null,
+          ends_at: endsAt,
+          status: 'active',
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return c.json(toAuctionView(data));
+    } catch (e) {
+      return c.json({ error: (e as any).message }, 400);
+    }
+  });
+
+  router.put("/admin/auctions/:id", async (c) => {
+    try {
+      const id = c.req.param('id');
+      const updates = await c.req.json();
+      const patch: any = { updated_at: new Date().toISOString() };
+      if (updates.endsAt)                        patch.ends_at       = updates.endsAt;
+      if (updates.status)                         patch.status        = updates.status;
+      if (updates.minIncrement !== undefined)     patch.min_increment = updates.minIncrement;
+      if (updates.reservePrice !== undefined)     patch.reserve_price = updates.reservePrice;
+
+      const { data, error } = await supabase.from('auctions').update(patch).eq('id', id).select().single();
+      if (error) return c.json({ error: error.message }, 404);
+      return c.json(toAuctionView(data));
+    } catch (e) {
+      return c.json({ error: (e as any).message }, 400);
+    }
   });
 
   // Profile

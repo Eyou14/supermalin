@@ -24,13 +24,22 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { toast } from 'sonner';
 import confetti from 'canvas-confetti';
 
+export interface BidHistoryItem {
+  id: string;
+  amount: number;
+  createdAt: string;
+  bidder: string;
+  isLeader: boolean;
+}
+
 interface ProductDetailProps {
   product: Product;
   onBack: () => void;
   onAddToCart: (product: Product) => void;
-  onPlaceBid: (product: Product, amount: number) => void;
+  onPlaceBid: (product: Product, amount: number) => Promise<{ success: boolean; error?: string }>;
   isWishlisted: boolean;
   onToggleWishlist: (id: string) => void;
+  bidHistory?: BidHistoryItem[];
 }
 
 export const ProductDetail: React.FC<ProductDetailProps> = ({
@@ -39,11 +48,13 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
   onAddToCart,
   onPlaceBid,
   isWishlisted,
-  onToggleWishlist
+  onToggleWishlist,
+  bidHistory = []
 }) => {
   const [activeImageIdx, setActiveImageIdx] = useState(0);
   const [timeLeft, setTimeLeft] = useState<string>('');
-  const [bidAmount, setBidAmount] = useState<number>((product.currentBid || product.price) + 5);
+  const minIncrement = product.minIncrement || 1;
+  const [bidAmount, setBidAmount] = useState<number>((product.currentBid || product.price) + minIncrement);
   const [isPlacingBid, setIsPlacingBid] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
 
@@ -76,27 +87,34 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
     return () => clearInterval(interval);
   }, [product]);
 
-  const handleBidSubmit = (e: React.FormEvent) => {
+  const handleBidSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (bidAmount <= (product.currentBid || product.price)) {
-      toast.error("L'enchère doit être supérieure au prix actuel.");
+    if (bidAmount < (product.currentBid || product.price) + minIncrement) {
+      toast.error(`L'enchère doit être d'au moins ${((product.currentBid || product.price) + minIncrement).toLocaleString('fr-FR')}€.`);
       return;
     }
 
     setIsPlacingBid(true);
-    setTimeout(() => {
-      onPlaceBid(product, bidAmount);
+    try {
+      const result = await onPlaceBid(product, bidAmount);
+      if (result.success) {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: ['#f97316', '#ffffff']
+        });
+        toast.success('Enchère placée avec succès !', {
+          description: `Vous êtes maintenant le meilleur enchérisseur à ${bidAmount}€.`
+        });
+      } else {
+        toast.error(result.error || "Impossible de placer cette enchère.");
+      }
+    } catch (err) {
+      toast.error("Erreur réseau, réessayez.");
+    } finally {
       setIsPlacingBid(false);
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#f97316', '#ffffff']
-      });
-      toast.success("Enchère placée avec succès !", {
-        description: `Vous êtes maintenant le meilleur enchérisseur à ${bidAmount}€.`
-      });
-    }, 1000);
+    }
   };
 
   const buyNowPrice =
@@ -293,7 +311,7 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                         </button>
                       </div>
                       <p className="text-[10px] text-gray-400 text-center font-bold uppercase">
-                        Mise minimale : {(product.currentBid || product.price) + 1}€
+                        Mise minimale : {((product.currentBid || product.price) + minIncrement).toLocaleString('fr-FR')}€
                       </p>
                     </form>
                   </div>
@@ -405,29 +423,33 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                       <History size={14} /> Historique des offres
                     </h4>
                     <div className="space-y-3">
-                      {[
-                        { user: 'Tho***92', amount: product.currentBid, time: 'Il y a 2h', status: 'leader' },
-                        { user: 'Mar***45', amount: (product.currentBid || 0) - 10, time: 'Il y a 5h', status: 'outbid' },
-                        { user: 'Jul***01', amount: (product.currentBid || 0) - 25, time: 'Hier à 18:30', status: 'outbid' }
-                      ].map((bid, i) => (
-                        <div
-                          key={i}
-                          className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100"
-                        >
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-2 h-2 rounded-full ${
-                                bid.status === 'leader' ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
-                              }`}
-                            />
-                            <span className="text-xs font-bold text-gray-900">{bid.user}</span>
+                      {bidHistory.length === 0 ? (
+                        <p className="text-xs text-gray-400 text-center py-4">
+                          Aucune offre pour le moment. Soyez le premier à enchérir !
+                        </p>
+                      ) : (
+                        bidHistory.map((bid) => (
+                          <div
+                            key={bid.id}
+                            className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-2 h-2 rounded-full ${
+                                  bid.isLeader ? 'bg-green-500 animate-pulse' : 'bg-gray-300'
+                                }`}
+                              />
+                              <span className="text-xs font-bold text-gray-900">{bid.bidder}</span>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs font-black text-gray-900">{bid.amount.toLocaleString('fr-FR')}€</p>
+                              <p className="text-[10px] text-gray-500">
+                                {new Date(bid.createdAt).toLocaleString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
                           </div>
-                          <div className="text-right">
-                            <p className="text-xs font-black text-gray-900">{bid.amount}€</p>
-                            <p className="text-[10px] text-gray-500">{bid.time}</p>
-                          </div>
-                        </div>
-                      ))}
+                        ))
+                      )}
                     </div>
                   </div>
                 </motion.div>

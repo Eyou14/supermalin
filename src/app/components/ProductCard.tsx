@@ -27,6 +27,11 @@ export interface Product {
   bidCount?: number;
   originalPrice?: number;
   tags?: string[];
+
+  // Enchères (rempli depuis la table `auctions` côté serveur)
+  auctionId?: string;
+  auctionStatus?: "draft" | "active" | "ended" | "sold" | "cancelled";
+  minIncrement?: number;
 }
 
 export const ProductCard = ({

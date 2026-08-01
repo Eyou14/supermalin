@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router';
-import { ProductDetail } from '../components/ProductDetail';
+import { ProductDetail, BidHistoryItem } from '../components/ProductDetail';
 import { Product } from '../components/ProductCard';
 import { MOCK_PRODUCTS } from '../mockData';
 import { AppContext } from '../layouts/RootLayout';
 import { projectId, publicAnonKey } from '/utils/supabase/info';
+import { supabase } from '/src/utils/supabase/client';
 import { toast } from 'sonner';
 
 const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e42f7`;
@@ -12,9 +13,21 @@ const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e4
 export const ProductDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { addToCart, wishlist, toggleWishlist } = useContext(AppContext);
+  const { addToCart, wishlist, toggleWishlist, user, isLoggedIn, openAuth } = useContext(AppContext);
   const [product, setProduct] = useState<Product | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [bidHistory, setBidHistory] = useState<BidHistoryItem[]>([]);
+
+  const fetchBidHistory = useCallback(async (auctionId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/auctions/${auctionId}/bids`, {
+        headers: { Authorization: `Bearer ${publicAnonKey}` },
+      });
+      if (res.ok) setBidHistory(await res.json());
+    } catch (error) {
+      console.error('Fetch bid history failed:', error);
+    }
+  }, []);
 
   useEffect(() => {
     if (id) {
@@ -22,9 +35,34 @@ export const ProductDetailPage: React.FC = () => {
     }
   }, [id]);
 
-  const fetchProduct = async (productId: string) => {
+  // Enchères en temps réel : dès qu'une nouvelle offre est enregistrée sur cette
+  // enchère, on rafraîchit le prix courant et l'historique sans recharger la page.
+  useEffect(() => {
+    if (!product?.auctionId) return;
+
+    fetchBidHistory(product.auctionId);
+
+    const channel = supabase
+      .channel(`auction-${product.auctionId}`)
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'auction_bids', filter: `auction_id=eq.${product.auctionId}` },
+        () => {
+          fetchBidHistory(product.auctionId!);
+          if (id) fetchProduct(id, { silent: true });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product?.auctionId]);
+
+  const fetchProduct = async (productId: string, options?: { silent?: boolean }) => {
     try {
-      setIsLoading(true);
+      if (!options?.silent) setIsLoading(true);
       const response = await fetch(`${API_URL}/products`, {
         headers: {
           'Authorization': `Bearer ${publicAnonKey}`,
@@ -50,7 +88,53 @@ export const ProductDetailPage: React.FC = () => {
       const mockProduct = MOCK_PRODUCTS.find(p => p.id === productId);
       setProduct(mockProduct || null);
     } finally {
-      setIsLoading(false);
+      if (!options?.silent) setIsLoading(false);
+    }
+  };
+
+  const handlePlaceBid = async (targetProduct: Product, amount: number): Promise<{ success: boolean; error?: string }> => {
+    if (!isLoggedIn || !user) {
+      openAuth();
+      return { success: false, error: 'Connectez-vous pour enchérir.' };
+    }
+    if (!targetProduct.auctionId) {
+      return { success: false, error: "Cette enchère n'est plus disponible." };
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
+      if (!token) {
+        openAuth();
+        return { success: false, error: 'Session expirée, reconnectez-vous.' };
+      }
+
+      const response = await fetch(`${API_URL}/auctions/${targetProduct.auctionId}/bids`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ amount }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        return { success: false, error: data.error || "Impossible de placer cette enchère." };
+      }
+
+      // Mise à jour immédiate de l'affichage (le canal temps réel rafraîchira aussi l'historique)
+      setProduct((prev) =>
+        prev
+          ? { ...prev, currentBid: data.currentPrice, bidCount: data.bidCount, auctionEnd: data.endsAt }
+          : prev
+      );
+      if (id) fetchBidHistory(targetProduct.auctionId);
+
+      return { success: true };
+    } catch (error) {
+      console.error('Place bid failed:', error);
+      return { success: false, error: 'Erreur réseau, réessayez.' };
     }
   };
 
@@ -100,13 +184,14 @@ export const ProductDetailPage: React.FC = () => {
   }
 
   return (
-    <ProductDetail 
+    <ProductDetail
       product={product}
       onBack={() => navigate(-1)}
       onAddToCart={handleAddToCart}
-      onPlaceBid={() => toast.info("Enchères bientôt disponibles")}
+      onPlaceBid={handlePlaceBid}
       isWishlisted={wishlist?.includes(product.id) || false}
       onToggleWishlist={handleToggleWishlist}
+      bidHistory={bidHistory}
     />
   );
 };

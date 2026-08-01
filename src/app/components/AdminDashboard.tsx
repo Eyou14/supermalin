@@ -112,6 +112,9 @@ export const AdminDashboard = () => {
   });
   const [isSavingSections, setIsSavingSections] = useState(false);
 
+  // ── Enchères (formulaire d'ajout produit) ───────────────────────────────────
+  const [addSaleType, setAddSaleType] = useState<'direct' | 'auction'>('direct');
+
   // ── Codes Promo ────────────────────────────────────────────────────────────
   const [promos, setPromos] = useState<any[]>([]);
   const [isCreatingPromo, setIsCreatingPromo] = useState(false);
@@ -384,12 +387,13 @@ export const AdminDashboard = () => {
       }
 
       const originTag = formData.get('originTag') as string;
+      const price = parseFloat(formData.get('price') as string);
       const productData = {
         name: formData.get('name') as string,
-        price: parseFloat(formData.get('price') as string),
+        price,
         description: formData.get('description') as string,
         category: formData.get('category') as string,
-        type: formData.get('type') as 'direct' | 'auction',
+        type: addSaleType,
         condition: formData.get('condition') as string,
         stock: parseInt(formData.get('stock') as string) || 1,
         tags: originTag ? [originTag] : [],
@@ -407,10 +411,43 @@ export const AdminDashboard = () => {
       });
 
       if (!response.ok) throw new Error();
+      const createdProduct = await response.json();
+
+      // Si l'article est mis aux enchères, on crée l'enchère associée
+      if (addSaleType === 'auction') {
+        const minIncrement = parseFloat(formData.get('minIncrement') as string) || 1;
+        const reservePriceRaw = formData.get('reservePrice') as string;
+        const endsAt = formData.get('endsAt') as string;
+
+        if (!endsAt) {
+          toast.error('Produit créé, mais aucune date de fin fournie : enchère non créée.');
+        } else {
+          const token = await getAdminToken();
+          const auctionRes = await fetch(`${API_URL}/admin/auctions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              productId: createdProduct.id,
+              startPrice: price,
+              minIncrement,
+              reservePrice: reservePriceRaw ? parseFloat(reservePriceRaw) : null,
+              endsAt: new Date(endsAt).toISOString(),
+            }),
+          });
+          if (!auctionRes.ok) {
+            const err = await auctionRes.json().catch(() => ({}));
+            toast.error(`Produit créé, mais échec de création de l'enchère : ${err.error || 'erreur inconnue'}`);
+          }
+        }
+      }
 
       toast.success('Produit ajouté avec images 🚀');
       setIsAddModalOpen(false);
       setSelectedFiles([]);
+      setAddSaleType('direct');
       fetchData();
     } catch (e) {
       console.error(e);
@@ -1539,6 +1576,57 @@ export const AdminDashboard = () => {
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
                   />
                 </div>
+                <div className="col-span-2 space-y-1">
+                  <label className="text-[10px] font-black uppercase text-gray-400">Type de vente</label>
+                  <select
+                    name="type"
+                    value={addSaleType}
+                    onChange={(e) => setAddSaleType(e.target.value as 'direct' | 'auction')}
+                    className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                  >
+                    <option value="direct">Vente directe</option>
+                    <option value="auction">Enchère</option>
+                  </select>
+                </div>
+                {addSaleType === 'auction' && (
+                  <>
+                    <div className="col-span-2 bg-orange-50 border border-orange-100 rounded-xl px-4 py-3 flex items-center gap-2">
+                      <Gavel size={16} className="text-orange-600" />
+                      <p className="text-xs text-orange-700 font-bold">
+                        Le champ « Prix » ci-dessus sera utilisé comme prix de départ de l'enchère.
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-gray-400">Incrément minimum (€)</label>
+                      <input
+                        name="minIncrement"
+                        type="number"
+                        step="0.01"
+                        defaultValue="1"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black uppercase text-gray-400">Prix de réserve (€, optionnel)</label>
+                      <input
+                        name="reservePrice"
+                        type="number"
+                        step="0.01"
+                        placeholder="Aucun"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                      />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[10px] font-black uppercase text-gray-400">Date et heure de fin</label>
+                      <input
+                        name="endsAt"
+                        type="datetime-local"
+                        required={addSaleType === 'auction'}
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                      />
+                    </div>
+                  </>
+                )}
                 <div className="col-span-2 space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400">Images produit</label>
                   <input
