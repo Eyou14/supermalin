@@ -504,6 +504,27 @@ export const AdminDashboard = () => {
       });
 
       if (!response.ok) throw new Error();
+
+      // Si le produit est une enchère, on met aussi à jour le prix d'achat immédiat
+      if (editingProduct.type === 'auction' && (editingProduct as any).auctionId) {
+        const buyNowPriceRaw = formData.get('buyNowPrice') as string;
+        const token = await getAdminToken();
+        const auctionRes = await fetch(`${API_URL}/admin/auctions/${(editingProduct as any).auctionId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            buyNowPrice: buyNowPriceRaw ? parseFloat(buyNowPriceRaw) : null,
+          }),
+        });
+        if (!auctionRes.ok) {
+          const err = await auctionRes.json().catch(() => ({}));
+          toast.error(`Produit mis à jour, mais échec de mise à jour du prix d'achat immédiat : ${err.error || 'erreur inconnue'}`);
+        }
+      }
+
       toast.success('Produit mis à jour ✅');
       setEditingProduct(null);
       setEditSelectedFiles([]);
@@ -1783,6 +1804,23 @@ export const AdminDashboard = () => {
                     className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
                   />
                 </div>
+                {editingProduct.type === 'auction' && (
+                  <div className="col-span-2 space-y-1 bg-orange-50 border border-orange-100 rounded-xl p-4">
+                    <label className="text-[10px] font-black uppercase text-orange-700">Prix d'achat immédiat (€)</label>
+                    <input
+                      name="buyNowPrice"
+                      type="number"
+                      step="0.01"
+                      defaultValue={(editingProduct as any).buyNowPrice ?? ''}
+                      placeholder="Ex : 450"
+                      className="w-full bg-white border border-orange-200 rounded-xl px-4 py-3 text-sm outline-none"
+                    />
+                    <p className="text-[10px] text-orange-700/80">
+                      Prix fixe auquel un acheteur peut remporter l'article immédiatement, sans attendre la fin de l'enchère
+                      (actuellement à {(editingProduct as any).currentBid ?? editingProduct.price}€). Laisse vide pour désactiver l'achat immédiat sur cette enchère.
+                    </p>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <label className="text-[10px] font-black uppercase text-gray-400">Catégorie</label>
                   <select
