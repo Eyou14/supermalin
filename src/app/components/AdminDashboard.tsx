@@ -417,6 +417,7 @@ export const AdminDashboard = () => {
       if (addSaleType === 'auction') {
         const minIncrement = parseFloat(formData.get('minIncrement') as string) || 1;
         const reservePriceRaw = formData.get('reservePrice') as string;
+        const buyNowPriceRaw = formData.get('buyNowPrice') as string;
         const endsAt = formData.get('endsAt') as string;
 
         if (!endsAt) {
@@ -434,6 +435,7 @@ export const AdminDashboard = () => {
               startPrice: price,
               minIncrement,
               reservePrice: reservePriceRaw ? parseFloat(reservePriceRaw) : null,
+              buyNowPrice: buyNowPriceRaw ? parseFloat(buyNowPriceRaw) : null,
               endsAt: new Date(endsAt).toISOString(),
             }),
           });
@@ -1614,6 +1616,17 @@ export const AdminDashboard = () => {
                         required={addSaleType === 'auction'}
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
                       />
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <label className="text-[10px] font-black uppercase text-gray-400">Prix d'achat immédiat (€, optionnel)</label>
+                      <input
+                        name="buyNowPrice"
+                        type="number"
+                        step="0.01"
+                        placeholder="Par défaut : prix de départ x 1,35"
+                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
+                      />
+                      <p className="text-[10px] text-gray-400">Ce prix reste fixe pendant toute l'enchère, il n'évolue jamais avec les mises.</p>
                     </div>
                   </>
                 )}

@@ -32,6 +32,7 @@ export interface Product {
   auctionId?: string;
   auctionStatus?: "draft" | "active" | "ended" | "sold" | "cancelled";
   minIncrement?: number;
+  buyNowPrice?: number | null;
 }
 
 export const ProductCard = ({

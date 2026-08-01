@@ -119,10 +119,11 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
     }
   };
 
-  const buyNowPrice =
-    product.type === 'auction'
-      ? Math.round((product.currentBid || product.price) * 1.35)
-      : product.price;
+  // Prix d'achat immédiat : fixé une fois pour toutes côté serveur à la création de
+  // l'enchère (product.buyNowPrice). Ne doit JAMAIS être recalculé à partir de
+  // l'enchère courante, sinon il grimpe avec les mises — ce qui n'a pas de sens pour
+  // un prix "coupe-file" censé rester stable.
+  const buyNowPrice = product.type === 'auction' ? product.buyNowPrice : product.price;
 
   return (
     <div className="container mx-auto px-4 py-8 animate-in fade-in duration-500">
@@ -325,37 +326,41 @@ export const ProductDetail: React.FC<ProductDetailProps> = ({
                     )}
                   </div>
 
-                  <div className="relative">
-                    <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                      <div className="w-full border-t border-gray-100"></div>
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase font-black">
-                      <span className="bg-white px-4 text-gray-300">OU</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-blue-600 rounded-3xl p-6 text-white relative overflow-hidden group shadow-xl shadow-blue-600/20">
-                    <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-                      <Zap size={80} />
-                    </div>
-                    <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
-                      <div>
-                        <p className="text-[11px] font-black uppercase text-blue-200 mb-1 flex items-center justify-center sm:justify-start gap-1">
-                          <Zap size={14} fill="currentColor" /> Option Coupe-file
-                        </p>
-                        <h3 className="text-xl font-black">Achat Immédiat</h3>
-                        <p className="text-3xl font-black mt-1 text-orange-400">
-                          {buyNowPrice.toLocaleString('fr-FR')}€
-                        </p>
+                  {buyNowPrice ? (
+                    <>
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                          <div className="w-full border-t border-gray-100"></div>
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase font-black">
+                          <span className="bg-white px-4 text-gray-300">OU</span>
+                        </div>
                       </div>
-                      <button
-                        onClick={() => onAddToCart(product)}
-                        className="w-full sm:w-auto px-8 py-3 bg-white text-blue-700 rounded-2xl font-black hover:bg-orange-500 hover:text-white transition-all shadow-xl hover:scale-105 active:scale-95"
-                      >
-                        Acheter maintenant
-                      </button>
-                    </div>
-                  </div>
+
+                      <div className="bg-blue-600 rounded-3xl p-6 text-white relative overflow-hidden group shadow-xl shadow-blue-600/20">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
+                          <Zap size={80} />
+                        </div>
+                        <div className="relative z-10 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+                          <div>
+                            <p className="text-[11px] font-black uppercase text-blue-200 mb-1 flex items-center justify-center sm:justify-start gap-1">
+                              <Zap size={14} fill="currentColor" /> Option Coupe-file
+                            </p>
+                            <h3 className="text-xl font-black">Achat Immédiat</h3>
+                            <p className="text-3xl font-black mt-1 text-orange-400">
+                              {buyNowPrice.toLocaleString('fr-FR')}€
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => onAddToCart({ ...product, price: buyNowPrice })}
+                            className="w-full sm:w-auto px-8 py-3 bg-white text-blue-700 rounded-2xl font-black hover:bg-orange-500 hover:text-white transition-all shadow-xl hover:scale-105 active:scale-95"
+                          >
+                            Acheter maintenant
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  ) : null}
                 </div>
               ) : (
                 <div className="space-y-6">
