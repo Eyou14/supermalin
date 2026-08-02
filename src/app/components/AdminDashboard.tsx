@@ -114,6 +114,7 @@ export const AdminDashboard = () => {
 
   // ── Enchères (formulaire d'ajout produit) ───────────────────────────────────
   const [addSaleType, setAddSaleType] = useState<'direct' | 'auction'>('direct');
+  const [enableBuyNow, setEnableBuyNow] = useState(false);
 
   // ── Codes Promo ────────────────────────────────────────────────────────────
   const [promos, setPromos] = useState<any[]>([]);
@@ -450,6 +451,7 @@ export const AdminDashboard = () => {
       setIsAddModalOpen(false);
       setSelectedFiles([]);
       setAddSaleType('direct');
+      setEnableBuyNow(false);
       fetchData();
     } catch (e) {
       console.error(e);
@@ -1638,16 +1640,28 @@ export const AdminDashboard = () => {
                         className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
                       />
                     </div>
-                    <div className="col-span-2 space-y-1">
-                      <label className="text-[10px] font-black uppercase text-gray-400">Prix d'achat immédiat (€, optionnel)</label>
-                      <input
-                        name="buyNowPrice"
-                        type="number"
-                        step="0.01"
-                        placeholder="Par défaut : prix de départ x 1,35"
-                        className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 text-sm outline-none"
-                      />
-                      <p className="text-[10px] text-gray-400">Ce prix reste fixe pendant toute l'enchère, il n'évolue jamais avec les mises.</p>
+                    <div className="col-span-2 space-y-2 bg-gray-50 border border-gray-100 rounded-xl p-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={enableBuyNow}
+                          onChange={(e) => setEnableBuyNow(e.target.checked)}
+                        />
+                        <span className="text-[10px] font-black uppercase text-gray-500">Activer l'achat immédiat (optionnel)</span>
+                      </label>
+                      {enableBuyNow && (
+                        <>
+                          <input
+                            name="buyNowPrice"
+                            type="number"
+                            step="0.01"
+                            required={enableBuyNow}
+                            placeholder="Ex : 450"
+                            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none"
+                          />
+                          <p className="text-[10px] text-gray-400">Ce prix reste fixe pendant toute l'enchère, il n'évolue jamais avec les mises. Sans valeur, aucun achat immédiat n'est proposé sur cette enchère.</p>
+                        </>
+                      )}
                     </div>
                   </>
                 )}

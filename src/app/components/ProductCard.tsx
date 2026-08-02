@@ -69,10 +69,15 @@ export const ProductCard = ({
         setTimeLeft("Terminée");
         clearInterval(interval);
       } else {
-        const h = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-        const m = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-        const s = Math.floor((distance % (1000 * 60)) / 1000);
-        setTimeLeft(`${h}h ${m}m ${s}s`);
+        // Bug corrigé : le calcul précédent faisait un modulo 24h sur les heures,
+        // ce qui plafonnait artificiellement l'affichage à 23h pour toute enchère
+        // durant plus d'un jour (le compte à rebours semblait bloqué sous 24h).
+        const totalSeconds = Math.floor(distance / 1000);
+        const d = Math.floor(totalSeconds / 86400);
+        const h = Math.floor((totalSeconds % 86400) / 3600);
+        const m = Math.floor((totalSeconds % 3600) / 60);
+        const s = totalSeconds % 60;
+        setTimeLeft(d > 0 ? `${d}j ${h}h ${m}m` : `${h}h ${m}m ${s}s`);
       }
     }, 1000);
 
