@@ -46,6 +46,25 @@ const API_URL = `https://${projectId}.supabase.co/functions/v1/make-server-e62e4
 const supabaseClient = createClient(`https://${projectId}.supabase.co`, publicAnonKey);
 const STORAGE_BUCKET = 'Products';
 
+// Nettoie un nom de fichier avant upload vers Supabase Storage.
+// Bug corrigé : les noms contenant des accents, apostrophes typographiques (')
+// ou caractères spéciaux (ex: "Capture-d'écran-....png" venant d'un Mac) faisaient
+// échouer l'upload avec une erreur 400 côté Storage — la clé d'objet n'acceptait
+// pas ces caractères. On normalise les accents (é → e) et on ne garde que
+// lettres/chiffres/points/tirets/underscores.
+const sanitizeFileName = (name: string): string => {
+  const dotIndex = name.lastIndexOf('.');
+  const base = dotIndex > 0 ? name.slice(0, dotIndex) : name;
+  const ext = dotIndex > 0 ? name.slice(dotIndex + 1).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+  const cleanBase = base
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // supprime les accents
+    .replace(/[^a-zA-Z0-9]+/g, '-') // tout le reste devient un tiret
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 80) || 'fichier';
+  return ext ? `${cleanBase}.${ext}` : cleanBase;
+};
+
 interface TradeRequest {
   id: string;
   type: 'buyback' | 'consignment';
@@ -370,7 +389,7 @@ export const AdminDashboard = () => {
 
       // Upload images vers Supabase Storage
       for (const file of selectedFiles) {
-        const fileName = `${Date.now()}-${file.name.replaceAll(' ', '-')}`;
+        const fileName = `${Date.now()}-${sanitizeFileName(file.name)}`;
 
         const { error } = await supabaseClient.storage
           .from(STORAGE_BUCKET)
@@ -468,7 +487,7 @@ export const AdminDashboard = () => {
       // Upload new files
       const newImageUrls: string[] = [];
       for (const file of editSelectedFiles) {
-        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.name.replaceAll(' ', '-')}`;
+        const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}-${sanitizeFileName(file.name)}`;
         const { error } = await supabaseClient.storage.from(STORAGE_BUCKET).upload(fileName, file);
         if (error) throw new Error(`Échec upload: ${error.message}`);
         const { data } = supabaseClient.storage.from(STORAGE_BUCKET).getPublicUrl(fileName);
